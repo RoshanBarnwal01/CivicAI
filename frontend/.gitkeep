@@ -1,1 +1,1389 @@
-# Keeps this directory in Git.
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  Clock, 
+  MapPin, 
+  Upload, 
+  Search, 
+  Filter, 
+  ArrowUp, 
+  Flame, 
+  ShieldAlert, 
+  Layers, 
+  BarChart3, 
+  Plus, 
+  X, 
+  Eye, 
+  ThumbsUp, 
+  Bot, 
+  Sparkles, 
+  Building2, 
+  CheckCircle2, 
+  HelpCircle, 
+  RefreshCw, 
+  TrendingUp, 
+  Zap, 
+  Send,
+  User,
+  Sun,
+  Moon,
+  ChevronRight,
+  FileText,
+  Bell,
+  Map as MapIcon,
+  Activity,
+  SlidersHorizontal,
+  Download,
+  AlertCircle
+} from 'lucide-react';
+
+const INITIAL_COMPLAINTS = [
+  {
+    id: 'CIV-8921',
+    title: 'Hazardous Deep Pothole on Main St Crossing',
+    description: 'Large, deep pothole near the central pedestrian crossing causing sudden vehicle braking and minor swerving into oncoming traffic.',
+    category: 'Roads & Infrastructure',
+    severity: 8.8,
+    urgencyLevel: 'High',
+    status: 'In Progress',
+    department: 'Public Works',
+    location: '452 Main Street & 5th Ave',
+    lat: 37.7749,
+    lng: -122.4194,
+    upvotes: 42,
+    createdAt: '2026-03-24T09:30:00Z',
+    aiConfidence: '96%',
+    photoUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=800&q=80',
+    timeline: [
+      { status: 'Submitted', time: 'Mar 24, 09:30 AM', desc: 'Report logged by citizen' },
+      { status: 'AI Prioritized', time: 'Mar 24, 09:31 AM', desc: 'AI flagged as High Urgency (8.8/10) due to traffic risk' },
+      { status: 'Assigned to Dept', time: 'Mar 24, 10:15 AM', desc: 'Assigned to Road Repair Crew #4' },
+      { status: 'In Progress', time: 'Mar 25, 08:00 AM', desc: 'Work order dispatched' }
+    ],
+    duplicateCount: 3,
+    aiNotes: 'Multiple reports detected within 30m radius. Combined priority elevated based on high pedestrian zone density.'
+  },
+  {
+    id: 'CIV-8919',
+    title: 'Burst Water Pipe Flooding Sidewalk',
+    description: 'Pressurized water leaking rapidly from under pavement. Creating localized flooding and water pressure loss nearby.',
+    category: 'Water Leakage',
+    severity: 9.2,
+    urgencyLevel: 'Urgent',
+    status: 'AI Prioritized',
+    department: 'Water & Sanitation',
+    location: '788 Elmwood Dr',
+    lat: 37.7833,
+    lng: -122.4167,
+    upvotes: 67,
+    createdAt: '2026-03-25T06:15:00Z',
+    aiConfidence: '98%',
+    photoUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+    timeline: [
+      { status: 'Submitted', time: 'Mar 25, 06:15 AM', desc: 'Report logged by citizen' },
+      { status: 'AI Prioritized', time: 'Mar 25, 06:16 AM', desc: 'AI assessed critical water infrastructure damage risk' }
+    ],
+    duplicateCount: 1,
+    aiNotes: 'High flow leak risk detected. Proximity to power station elevated priority.'
+  },
+  {
+    id: 'CIV-8904',
+    title: 'Broken Streetlight in Park Walking Path',
+    description: 'Path light #14 has been dark for three nights, creating safety concerns for late evening commuters.',
+    category: 'Streetlight',
+    severity: 4.5,
+    urgencyLevel: 'Medium',
+    status: 'Assigned to Dept',
+    department: 'Electrical Services',
+    location: 'Oakridge Community Park - North Entrance',
+    lat: 37.7690,
+    lng: -122.4480,
+    upvotes: 12,
+    createdAt: '2026-03-22T21:10:00Z',
+    aiConfidence: '91%',
+    photoUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+    timeline: [
+      { status: 'Submitted', time: 'Mar 22, 09:10 PM', desc: 'Report logged by citizen' },
+      { status: 'AI Prioritized', time: 'Mar 22, 09:11 PM', desc: 'Medium severity based on lighting coverage' },
+      { status: 'Assigned to Dept', time: 'Mar 23, 09:00 AM', desc: 'Assigned to Lighting Maintenance' }
+    ],
+    duplicateCount: 0,
+    aiNotes: 'Single fixture outage. Low immediate structural threat.'
+  },
+  {
+    id: 'CIV-8882',
+    title: 'Overflowing Public Waste Bins at Bus Stop',
+    description: 'Trash bins overflowing onto sidewalk causing sanitation issues and attracting pests.',
+    category: 'Waste Management',
+    severity: 6.1,
+    urgencyLevel: 'Medium',
+    status: 'Resolved',
+    department: 'Sanitation',
+    location: 'Corner of 12th St & Grand Ave',
+    lat: 37.7550,
+    lng: -122.4200,
+    upvotes: 28,
+    createdAt: '2026-03-21T14:20:00Z',
+    aiConfidence: '94%',
+    photoUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80',
+    timeline: [
+      { status: 'Submitted', time: 'Mar 21, 02:20 PM', desc: 'Report logged' },
+      { status: 'AI Prioritized', time: 'Mar 21, 02:21 PM', desc: 'Categorized as Waste' },
+      { status: 'Assigned to Dept', time: 'Mar 21, 03:00 PM', desc: 'Sanitation dispatch notified' },
+      { status: 'In Progress', time: 'Mar 22, 08:30 AM', desc: 'Special cleanup scheduled' },
+      { status: 'Resolved', time: 'Mar 22, 11:45 AM', desc: 'Bins emptied and area sanitized' }
+    ],
+    duplicateCount: 4,
+    aiNotes: 'Resolved on schedule. Historical repeat location.'
+  },
+  {
+    id: 'CIV-8850',
+    title: 'Malfunctioning Traffic Signal Light',
+    description: 'Traffic light stuck on flashing red in all directions, causing confusion and near misses during rush hour.',
+    category: 'Traffic Signal',
+    severity: 9.5,
+    urgencyLevel: 'Urgent',
+    status: 'In Progress',
+    department: 'Traffic Management',
+    location: 'Pine St & Market Blvd Intersection',
+    lat: 37.7910,
+    lng: -122.4010,
+    upvotes: 94,
+    createdAt: '2026-03-25T07:45:00Z',
+    aiConfidence: '99%',
+    photoUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+    timeline: [
+      { status: 'Submitted', time: 'Mar 25, 07:45 AM', desc: 'Report logged' },
+      { status: 'AI Prioritized', time: 'Mar 25, 07:46 AM', desc: 'Highest safety hazard level assigned' },
+      { status: 'Assigned to Dept', time: 'Mar 25, 07:50 AM', desc: 'Emergency signal crew dispatched' },
+      { status: 'In Progress', time: 'Mar 25, 08:15 AM', desc: 'Technicians on site' }
+    ],
+    duplicateCount: 6,
+    aiNotes: 'Critical intersection disruption. Immediate dispatch recommended.'
+  }
+];
+
+export default function App() {
+  const [theme, setTheme] = useState('light');
+  const [activeTab, setActiveTab] = useState('citizen'); // 'citizen' | 'authority' | 'analytics'
+  const [complaints, setComplaints] = useState(INITIAL_COMPLAINTS);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  
+  // New Complaint Form State
+  const [formTitle, setFormTitle] = useState('');
+  const [formDesc, setFormDesc] = useState('');
+  const [formLocation, setFormLocation] = useState('102 Pine Street, Downtown');
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiPrediction, setAiPrediction] = useState(null);
+  const [detectedDuplicate, setDetectedDuplicate] = useState(null);
+  const [userSubmittedSuccess, setUserSubmittedSuccess] = useState(false);
+
+  // Authority Dashboard Filters & State
+  const [authorityFilterCategory, setAuthorityFilterCategory] = useState('All');
+  const [authorityFilterStatus, setAuthorityFilterStatus] = useState('All');
+  const [authorityFilterSeverity, setAuthorityFilterSeverity] = useState('All');
+  const [authoritySearchQuery, setAuthoritySearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('priority'); // 'priority' | 'upvotes' | 'newest'
+
+  // Notification simulation
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: 'Issue #CIV-8921 updated to "In Progress"', unread: true },
+    { id: 2, text: 'AI merged 3 duplicate reports into #CIV-8850', unread: true }
+  ]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (!formTitle && !formDesc) {
+      setAiPrediction(null);
+      setDetectedDuplicate(null);
+      return;
+    }
+
+    setIsAnalyzing(true);
+    const timer = setTimeout(() => {
+      const text = (formTitle + ' ' + formDesc).toLowerCase();
+      let category = 'General Maintenance';
+      let severity = 5.2;
+      let urgencyLevel = 'Medium';
+
+      if (text.includes('pothole') || text.includes('road') || text.includes('asphalt') || text.includes('crack')) {
+        category = 'Roads & Infrastructure';
+        severity = 7.8;
+        urgencyLevel = 'High';
+      } else if (text.includes('water') || text.includes('pipe') || text.includes('leak') || text.includes('flood')) {
+        category = 'Water Leakage';
+        severity = 9.1;
+        urgencyLevel = 'Urgent';
+      } else if (text.includes('light') || text.includes('lamp') || text.includes('dark') || text.includes('street light')) {
+        category = 'Streetlight';
+        severity = 4.8;
+        urgencyLevel = 'Medium';
+      } else if (text.includes('trash') || text.includes('waste') || text.includes('garbage') || text.includes('dump')) {
+        category = 'Waste Management';
+        severity = 6.4;
+        urgencyLevel = 'Medium';
+      } else if (text.includes('signal') || text.includes('traffic') || text.includes('intersection')) {
+        category = 'Traffic Signal';
+        severity = 8.9;
+        urgencyLevel = 'Urgent';
+      }
+
+      setAiPrediction({
+        category,
+        severity,
+        urgencyLevel,
+        confidence: Math.floor(88 + Math.random() * 10) + '%',
+        recommendedDept: category === 'Roads & Infrastructure' ? 'Public Works' :
+                        category === 'Water Leakage' ? 'Water & Sanitation' :
+                        category === 'Streetlight' ? 'Electrical Services' :
+                        category === 'Waste Management' ? 'Sanitation' : 'Traffic Dept'
+      });
+
+      // Simulated Duplicate Detection
+      if (text.includes('pothole') || text.includes('main st') || text.includes('pipe')) {
+        setDetectedDuplicate(complaints[0]);
+      } else {
+        setDetectedDuplicate(null);
+      }
+
+      setIsAnalyzing(false);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [formTitle, formDesc, complaints]);
+
+  const handleUpvote = (id) => {
+    setComplaints(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, upvotes: item.upvotes + 1 };
+      }
+      return item;
+    }));
+  };
+
+  const handleCreateComplaint = (e) => {
+    e.preventDefault();
+    if (!formTitle || !formDesc) return;
+
+    const newIssue = {
+      id: `CIV-${Math.floor(1000 + Math.random() * 9000)}`,
+      title: formTitle,
+      description: formDesc,
+      category: aiPrediction ? aiPrediction.category : 'General Maintenance',
+      severity: aiPrediction ? aiPrediction.severity : 5.0,
+      urgencyLevel: aiPrediction ? aiPrediction.urgencyLevel : 'Medium',
+      status: 'AI Prioritized',
+      department: aiPrediction ? aiPrediction.recommendedDept : 'Public Works',
+      location: formLocation,
+      lat: 37.7700 + (Math.random() - 0.5) * 0.05,
+      lng: -122.4200 + (Math.random() - 0.5) * 0.05,
+      upvotes: 1,
+      createdAt: new Date().toISOString(),
+      aiConfidence: aiPrediction ? aiPrediction.confidence : '92%',
+      photoUrl: uploadedImage || 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?auto=format&fit=crop&w=800&q=80',
+      timeline: [
+        { status: 'Submitted', time: 'Just now', desc: 'Report logged by citizen' },
+        { status: 'AI Prioritized', time: 'Just now', desc: `Assigned priority score ${aiPrediction ? aiPrediction.severity : 5.0}/10` }
+      ],
+      duplicateCount: 0,
+      aiNotes: 'Newly categorized via real-time LLM complaint analyzer.'
+    };
+
+    setComplaints([newIssue, ...complaints]);
+    setUserSubmittedSuccess(true);
+    setFormTitle('');
+    setFormDesc('');
+    setUploadedImage(null);
+    setAiPrediction(null);
+    setDetectedDuplicate(null);
+
+    setTimeout(() => setUserSubmittedSuccess(false), 4000);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const updateComplaintStatus = (id, newStatus) => {
+    setComplaints(prev => prev.map(item => {
+      if (item.id === id) {
+        const updatedTimeline = [
+          ...item.timeline,
+          { status: newStatus, time: 'Just now', desc: `Status changed to ${newStatus}` }
+        ];
+        return { ...item, status: newStatus, timeline: updatedTimeline };
+      }
+      return item;
+    }));
+    if (selectedComplaint && selectedComplaint.id === id) {
+      setSelectedComplaint(prev => ({ ...prev, status: newStatus }));
+    }
+  };
+
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter(item => {
+      const matchesCategory = authorityFilterCategory === 'All' || item.category === authorityFilterCategory;
+      const matchesStatus = authorityFilterStatus === 'All' || item.status === authorityFilterStatus;
+      const matchesSeverity = authorityFilterSeverity === 'All' || 
+        (authorityFilterSeverity === 'High' && item.severity >= 8.0) ||
+        (authorityFilterSeverity === 'Medium' && item.severity >= 5.0 && item.severity < 8.0) ||
+        (authorityFilterSeverity === 'Low' && item.severity < 5.0);
+      
+      const matchesSearch = item.title.toLowerCase().includes(authoritySearchQuery.toLowerCase()) ||
+                            item.location.toLowerCase().includes(authoritySearchQuery.toLowerCase()) ||
+                            item.id.toLowerCase().includes(authoritySearchQuery.toLowerCase());
+
+      return matchesCategory && matchesStatus && matchesSeverity && matchesSearch;
+    }).sort((a, b) => {
+      if (sortBy === 'priority') return b.severity - a.severity;
+      if (sortBy === 'upvotes') return b.upvotes - a.upvotes;
+      if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+      return 0;
+    });
+  }, [complaints, authorityFilterCategory, authorityFilterStatus, authorityFilterSeverity, authoritySearchQuery, sortBy]);
+
+  return (
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'} transition-colors duration-200 font-sans`}>
+      {/* Top Navbar */}
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-md ${theme === 'dark' ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-200'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          
+          {/* Logo & Brand */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-teal-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-blue-500 to-teal-400 bg-clip-text text-transparent">
+                Civic AI
+              </span>
+              <span className="hidden sm:inline-block ml-2 text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                v2.4 Autonomous
+              </span>
+            </div>
+          </div>
+
+          {/* View Switcher Navigation */}
+          <nav className={`hidden md:flex p-1 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+            <button
+              onClick={() => setActiveTab('citizen')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'citizen'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>Citizen Portal</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('authority')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'authority'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Authority Dashboard</span>
+              <span className="ml-1 px-1.5 py-0.2 text-xs bg-red-500 text-white rounded-full font-bold">
+                {complaints.filter(c => c.severity >= 8 && c.status !== 'Resolved').length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>Public Impact Map</span>
+            </button>
+          </nav>
+
+          {/* Controls: Theme & Profile */}
+          <div className="flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className={`p-2 rounded-lg border transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' 
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`p-2 rounded-lg border relative transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => n.unread) && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-indigo-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className={`absolute right-0 mt-2 w-80 rounded-xl shadow-2xl border p-4 z-50 ${
+                  theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-3 border-b pb-2 dark:border-slate-800">
+                    <h4 className="font-bold text-sm">Notifications</h4>
+                    <button 
+                      onClick={() => setNotifications(prev => prev.map(n => ({ ...n, unread: false })))}
+                      className="text-xs text-indigo-500 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {notifications.map(n => (
+                      <div key={n.id} className={`p-2 rounded-lg text-xs ${n.unread ? 'bg-indigo-50 dark:bg-indigo-950/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        <p className="font-medium text-slate-800 dark:text-slate-200">{n.text}</p>
+                        <span className="text-[10px] text-slate-400">10 mins ago</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Profile Avatar */}
+            <div className="flex items-center space-x-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 flex items-center justify-center font-bold text-white text-sm shadow">
+                JD
+              </div>
+              <div className="hidden lg:block text-left">
+                <p className="text-xs font-bold leading-none">Jane Doe</p>
+                <p className="text-[10px] text-slate-400 leading-tight">Verified Citizen</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile View Switcher Navigation */}
+        <div className={`md:hidden flex border-t px-2 py-1.5 justify-around ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+          <button
+            onClick={() => setActiveTab('citizen')}
+            className={`flex flex-col items-center p-1 text-xs font-semibold ${
+              activeTab === 'citizen' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            <span>Citizen</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('authority')}
+            className={`flex flex-col items-center p-1 text-xs font-semibold ${
+              activeTab === 'authority' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5" />
+            <span>Authority</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex flex-col items-center p-1 text-xs font-semibold ${
+              activeTab === 'analytics' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span>Impact Map</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* ========================================================================= */}
+        {/* VIEW 1: CITIZEN PORTAL */}
+        {/* ========================================================================= */}
+        {activeTab === 'citizen' && (
+          <div className="space-y-8">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white p-8 shadow-2xl">
+              <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              <div className="relative z-10 max-w-2xl">
+                <span className="px-3 py-1 bg-indigo-500/30 border border-indigo-400/30 rounded-full text-xs font-semibold text-indigo-200 tracking-wide uppercase inline-flex items-center gap-1 mb-3">
+                  <Bot className="w-3.5 h-3.5" /> AI-Assisted Dispatch Enabled
+                </span>
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+                  Report a Civic Issue with Instant AI Prioritization
+                </h1>
+                <p className="text-indigo-200 text-sm sm:text-base leading-relaxed">
+                  Snap a photo or describe the problem. Civic AI predicts severity, filters duplicates automatically, and routes your request directly to local field teams.
+                </p>
+              </div>
+            </div>
+
+            {userSubmittedSuccess && (
+              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle className="w-6 h-6 text-emerald-500" />
+                  <div>
+                    <h4 className="font-bold">Complaint Logged & Prioritized Successfully!</h4>
+                    <p className="text-xs">Your issue has been routed to the relevant department with high AI priority.</p>
+                  </div>
+                </div>
+                <button onClick={() => setUserSubmittedSuccess(false)}><X className="w-5 h-5" /></button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left Column: Complaint Submission Form (7 cols) */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className={`p-6 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-indigo-500" /> Log New Issue
+                  </h2>
+
+                  <form onSubmit={handleCreateComplaint} className="space-y-5">
+                    {/* Image Dropzone / Preview */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                        Upload Photo / Evidence
+                      </label>
+                      <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
+                        uploadedImage 
+                          ? 'border-indigo-500 bg-indigo-50/20' 
+                          : theme === 'dark' ? 'border-slate-800 hover:border-slate-700 bg-slate-900/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'
+                      }`}>
+                        {uploadedImage ? (
+                          <div className="relative group">
+                            <img src={uploadedImage} alt="Uploaded Issue" className="h-48 w-full object-cover rounded-lg shadow-md" />
+                            <button
+                              type="button"
+                              onClick={() => setUploadedImage(null)}
+                              className="absolute top-2 right-2 p-1.5 bg-slate-900/80 text-white rounded-full hover:bg-red-600 transition"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer flex flex-col items-center justify-center py-6">
+                            <Upload className="w-8 h-8 text-indigo-500 mb-2" />
+                            <p className="text-sm font-medium">Click to upload or drop complaint photo</p>
+                            <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                        Issue Title
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Deep pothole causing hazard or Water pipe leakage"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        required
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition ${
+                          theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Location Selection with GPS Simulation */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Location / Address
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setFormLocation('GPS Detected: 742 Evergreen Terrace (±5m accuracy)')}
+                          className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                        >
+                          <MapPin className="w-3.5 h-3.5" /> Auto-detect GPS
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={formLocation}
+                        onChange={(e) => setFormLocation(e.target.value)}
+                        required
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition ${
+                          theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                        Detailed Description
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="Describe the issue, estimated size, safety impacts, or urgency..."
+                        value={formDesc}
+                        onChange={(e) => setFormDesc(e.target.value)}
+                        required
+                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition ${
+                          theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                        }`}
+                      ></textarea>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={!formTitle || !formDesc}
+                      className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Submit Complaint for AI Routing</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: AI Real-time Assistant Widget (5 cols) */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                {/* Real-time AI Assistant Card */}
+                <div className={`p-6 rounded-2xl border shadow-lg relative overflow-hidden transition-all ${
+                  theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <Bot className="w-32 h-32 text-indigo-500" />
+                  </div>
+
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+                      <Sparkles className="w-6 h-6 animate-spin" style={{ animationDuration: '4s' }} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base">AI Analysis Widget</h3>
+                      <p className="text-xs text-slate-400">Real-time prediction & duplicate detection</p>
+                    </div>
+                  </div>
+
+                  {isAnalyzing ? (
+                    <div className="py-8 text-center space-y-3">
+                      <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+                      <p className="text-xs font-semibold text-slate-500">Analyzing report text & categorizing severity...</p>
+                    </div>
+                  ) : aiPrediction ? (
+                    <div className="space-y-4">
+                      {/* Predicted Category */}
+                      <div className={`p-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-slate-400 font-medium">Predicted Category</span>
+                          <span className="text-xs font-bold text-indigo-500">{aiPrediction.confidence} Confidence</span>
+                        </div>
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                          <Layers className="w-4 h-4 text-indigo-500" /> {aiPrediction.category}
+                        </span>
+                      </div>
+
+                      {/* Estimated Severity Meter */}
+                      <div className={`p-3 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-slate-400 font-medium">AI Severity Score</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            aiPrediction.severity >= 8 ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {aiPrediction.urgencyLevel} Urgency
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{aiPrediction.severity}/10</span>
+                          <div className="flex-1 bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                aiPrediction.severity >= 8 ? 'bg-red-500' : aiPrediction.severity >= 5 ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}
+                              style={{ width: `${aiPrediction.severity * 10}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Department Auto-Routing Target */}
+                      <div className="text-xs text-slate-400 flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5 text-slate-500" /> Target Department: <span className="font-bold text-slate-700 dark:text-slate-300">{aiPrediction.recommendedDept}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-xs text-slate-400 border border-dashed rounded-xl p-4">
+                      Start typing an issue title or description to see instant AI categorization and severity scoring.
+                    </div>
+                  )}
+
+                  {/* Duplicate Detection Alert Box */}
+                  {detectedDuplicate && (
+                    <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 space-y-3">
+                      <div className="flex items-start space-x-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-xs uppercase tracking-wider">Duplicate Complaint Detected Nearby!</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                            An identical issue was reported <strong className="text-slate-900 dark:text-white">50m away</strong>:
+                          </p>
+                          <p className="text-xs font-semibold mt-1 italic">"{detectedDuplicate.title}"</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-slate-500">{detectedDuplicate.upvotes} citizens already upvoted</span>
+                        <button
+                          onClick={() => handleUpvote(detectedDuplicate.id)}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center gap-1 hover:bg-amber-600 transition shadow"
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" /> Upvote Existing Issue
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Helpful Citizen Tips */}
+                <div className={`p-4 rounded-xl border text-xs space-y-2 ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 text-slate-400' : 'bg-indigo-50/50 border-indigo-100 text-slate-600'}`}>
+                  <h4 className="font-bold flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                    <HelpCircle className="w-4 h-4 text-indigo-500" /> How Civic AI Prioritization Works
+                  </h4>
+                  <p>Our algorithm evaluates image clarity, structural urgency, pedestrian density, and proximity to schools or hospitals to automatically escalate critical complaints.</p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* My Complaints Tracker Grid */}
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold">Track Submitted Complaints</h3>
+                  <p className="text-xs text-slate-400">Live progress stepper and department workflow</p>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 rounded-full">
+                  {complaints.length} Total Reports
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {complaints.map(item => (
+                  <div 
+                    key={item.id} 
+                    className={`rounded-2xl border shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between ${
+                      theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+                    }`}
+                  >
+                    <div>
+                      {/* Image Header */}
+                      <div className="relative h-44 w-full bg-slate-800 overflow-hidden">
+                        <img src={item.photoUrl} alt={item.title} className="w-full h-full object-cover" />
+                        <div className="absolute top-3 left-3 flex gap-2">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold text-white shadow ${
+                            item.severity >= 8 ? 'bg-red-600' : item.severity >= 5 ? 'bg-amber-600' : 'bg-emerald-600'
+                          }`}>
+                            Severity {item.severity}
+                          </span>
+                          <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-900/80 text-white backdrop-blur-sm">
+                            {item.category}
+                          </span>
+                        </div>
+                        <div className="absolute bottom-3 right-3 bg-slate-900/80 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white font-mono">
+                          {item.id}
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="p-5 space-y-3">
+                        <h4 className="font-bold text-base leading-snug line-clamp-1">{item.title}</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{item.description}</p>
+                        
+                        <div className="flex items-center text-xs text-slate-400 gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                          <span className="truncate">{item.location}</span>
+                        </div>
+
+                        {/* Timeline Stepper Mini */}
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Progress Timeline</span>
+                          <div className="flex items-center justify-between text-xs font-semibold">
+                            {['Submitted', 'AI Prioritized', 'Assigned to Dept', 'In Progress', 'Resolved'].map((st, idx) => {
+                              const isCompleted = item.timeline.some(t => t.status === st);
+                              const isCurrent = item.status === st;
+                              return (
+                                <div key={st} className="flex flex-col items-center group relative">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    isCurrent ? 'bg-indigo-600 ring-4 ring-indigo-100 dark:ring-indigo-950' :
+                                    isCompleted ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                                  }`} />
+                                  <span className="text-[9px] text-slate-400 mt-1 truncate max-w-[45px]">{st.split(' ')[0]}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className={`p-4 border-t flex items-center justify-between text-xs font-semibold ${
+                      theme === 'dark' ? 'border-slate-800 bg-slate-900/50' : 'border-slate-100 bg-slate-50/50'
+                    }`}>
+                      <button
+                        onClick={() => handleUpvote(item.id)}
+                        className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-500 transition"
+                      >
+                        <ThumbsUp className="w-4 h-4 text-indigo-500" />
+                        <span>{item.upvotes} Upvotes</span>
+                      </button>
+
+                      <button
+                        onClick={() => setSelectedComplaint(item)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="w-4 h-4" /> View AI Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 2: AUTHORITY DASHBOARD */}
+        {/* ========================================================================= */}
+        {activeTab === 'authority' && (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-black">City Command Center Dashboard</h1>
+                <p className="text-xs text-slate-400">AI-Driven triage & automated department dispatch queue</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => setComplaints(INITIAL_COMPLAINTS)}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Reset Demo Data
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className={`p-5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Active Complaints</p>
+                    <p className="text-3xl font-black mt-1">{complaints.length}</p>
+                  </div>
+                  <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3 text-emerald-500" /> +12% from last week
+                </p>
+              </div>
+
+              <div className={`p-5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">High Urgency Queue</p>
+                    <p className="text-3xl font-black text-red-500 mt-1">
+                      {complaints.filter(c => c.severity >= 8 && c.status !== 'Resolved').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-red-500/10 text-red-500 rounded-xl">
+                    <Flame className="w-6 h-6 animate-pulse" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-red-500/80 mt-2 font-medium">
+                  Requires dispatch under 2 hrs
+                </p>
+              </div>
+
+              <div className={`p-5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">AI Duplicates Avoided</p>
+                    <p className="text-3xl font-black text-indigo-500 mt-1">14 Reports</p>
+                  </div>
+                  <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl">
+                    <Zap className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-emerald-500 mt-2 font-medium">
+                  Saved ~18 labor hours this week
+                </p>
+              </div>
+
+              <div className={`p-5 rounded-2xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Avg Resolution Speed</p>
+                    <p className="text-3xl font-black text-emerald-500 mt-1">1.4 Days</p>
+                  </div>
+                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                    <Clock className="w-6 h-6" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-emerald-500 mt-2 font-medium">
+                  35% faster with AI prioritization
+                </p>
+              </div>
+            </div>
+
+            {/* Filter and Control Bar */}
+            <div className={`p-4 rounded-2xl border shadow-sm space-y-3 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                
+                {/* Search Bar */}
+                <div className="relative w-full lg:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search ID, keyword, or address..."
+                    value={authoritySearchQuery}
+                    onChange={(e) => setAuthoritySearchQuery(e.target.value)}
+                    className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs font-medium border outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                  {/* Category Filter */}
+                  <select
+                    value={authorityFilterCategory}
+                    onChange={(e) => setAuthorityFilterCategory(e.target.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Roads & Infrastructure">Roads & Infra</option>
+                    <option value="Water Leakage">Water Leakage</option>
+                    <option value="Streetlight">Streetlight</option>
+                    <option value="Waste Management">Waste Management</option>
+                    <option value="Traffic Signal">Traffic Signal</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={authorityFilterStatus}
+                    onChange={(e) => setAuthorityFilterStatus(e.target.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="AI Prioritized">AI Prioritized</option>
+                    <option value="Assigned to Dept">Assigned to Dept</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                  </select>
+
+                  {/* Severity Filter */}
+                  <select
+                    value={authorityFilterSeverity}
+                    onChange={(e) => setAuthorityFilterSeverity(e.target.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <option value="All">All Severity Levels</option>
+                    <option value="High">High Urgency (8.0+)</option>
+                    <option value="Medium">Medium (5.0 - 7.9)</option>
+                    <option value="Low">Low (&lt; 5.0)</option>
+                  </select>
+
+                  {/* Sort By */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800`}
+                  >
+                    <option value="priority">Sort: AI Priority Score</option>
+                    <option value="upvotes">Sort: Most Upvoted</option>
+                    <option value="newest">Sort: Newest First</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Prioritized Queue Table */}
+            <div className={`rounded-2xl border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className={`border-b uppercase tracking-wider font-bold ${
+                      theme === 'dark' ? 'bg-slate-800/50 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                    }`}>
+                      <th className="p-4">Priority Score</th>
+                      <th className="p-4">Complaint ID & Title</th>
+                      <th className="p-4">Category / Dept</th>
+                      <th className="p-4">Location</th>
+                      <th className="p-4">Upvotes</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                    {filteredComplaints.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="p-8 text-center text-slate-400">
+                          No complaints match the selected filter criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredComplaints.map((item) => (
+                        <tr 
+                          key={item.id}
+                          className={`hover:bg-indigo-50/30 dark:hover:bg-slate-800/40 transition ${
+                            item.severity >= 8.5 ? 'bg-red-500/5' : ''
+                          }`}
+                        >
+                          {/* Severity Badge */}
+                          <td className="p-4">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2.5 py-1 rounded-lg font-black text-xs ${
+                                item.severity >= 8 ? 'bg-red-500 text-white shadow-sm' :
+                                item.severity >= 5 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                              }`}>
+                                {item.severity}
+                              </span>
+                              {item.severity >= 8 && <Flame className="w-4 h-4 text-red-500 animate-pulse" />}
+                            </div>
+                          </td>
+
+                          {/* ID & Title */}
+                          <td className="p-4">
+                            <div className="max-w-xs">
+                              <span className="font-mono text-[10px] text-indigo-500 font-bold">{item.id}</span>
+                              <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{item.title}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{item.aiNotes}</p>
+                            </div>
+                          </td>
+
+                          {/* Category / Dept */}
+                          <td className="p-4">
+                            <div>
+                              <p className="font-bold">{item.category}</p>
+                              <p className="text-[10px] text-slate-400">{item.department}</p>
+                            </div>
+                          </td>
+
+                          {/* Location */}
+                          <td className="p-4">
+                            <span className="text-slate-600 dark:text-slate-300 truncate max-w-[150px] block">
+                              {item.location}
+                            </span>
+                          </td>
+
+                          {/* Upvotes */}
+                          <td className="p-4">
+                            <span className="font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              👍 {item.upvotes}
+                            </span>
+                          </td>
+
+                          {/* Status Badge */}
+                          <td className="p-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              item.status === 'Resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                              item.status === 'In Progress' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                              item.status === 'Assigned to Dept' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                              'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                            }`}>
+                              {item.status}
+                            </span>
+                          </td>
+
+                          {/* Action Button */}
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => setSelectedComplaint(item)}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition"
+                            >
+                              Triage & Dispatch
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 3: PUBLIC IMPACT MAP & ANALYTICS */}
+        {/* ========================================================================= */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-black">Citywide Heatmap & AI Resolution Impact</h1>
+                <p className="text-xs text-slate-400">Geospatial distribution and cross-departmental resolution metrics</p>
+              </div>
+              <button className="px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-600 text-white flex items-center gap-1 shadow">
+                <Download className="w-3.5 h-3.5" /> Export Monthly Report
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Simulated Map View (8 cols) */}
+              <div className={`lg:col-span-8 p-6 rounded-2xl border shadow-sm relative overflow-hidden min-h-[420px] flex flex-col justify-between ${
+                theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+              }`}>
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-base flex items-center gap-2">
+                      <MapIcon className="w-5 h-5 text-indigo-500" /> Interactive City Issue Heatmap
+                    </h3>
+                    <div className="flex items-center space-x-2 text-xs font-medium">
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> High Risk</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Medium</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Resolved</span>
+                    </div>
+                  </div>
+
+                  {/* Canvas Map Graphic Simulation */}
+                  <div className="relative w-full h-80 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center p-4">
+                    {/* Simulated grid lines */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30"></div>
+
+                    {/* Simulated Pins */}
+                    {complaints.map((item, index) => {
+                      const topPos = 20 + (index * 16) % 65;
+                      const leftPos = 15 + (index * 22) % 75;
+                      return (
+                        <div 
+                          key={item.id} 
+                          onClick={() => setSelectedComplaint(item)}
+                          style={{ top: `${topPos}%`, left: `${leftPos}%` }}
+                          className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xl border-2 border-white dark:border-slate-900 transition hover:scale-125 ${
+                            item.severity >= 8 ? 'bg-red-500 animate-bounce' : item.severity >= 5 ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`}>
+                            {item.severity}
+                          </div>
+
+                          {/* Hover Tooltip */}
+                          <div className="hidden group-hover:block absolute left-10 top-0 w-48 p-2 rounded-lg bg-slate-900 text-white text-[11px] shadow-2xl border border-slate-700 z-50">
+                            <p className="font-bold truncate">{item.title}</p>
+                            <p className="text-slate-400">{item.location}</p>
+                            <span className="text-[10px] text-indigo-400 font-bold uppercase">{item.category}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="absolute bottom-3 left-3 bg-slate-900/90 border border-slate-800 p-2 rounded-lg text-[10px] text-slate-300 backdrop-blur-md">
+                      📍 SF Bay Area Sector 4 • 5 Active Incidents Displayed
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart Visuals (4 cols) */}
+              <div className="lg:col-span-4 space-y-6">
+                
+                {/* Category Distribution Chart Card */}
+                <div className={`p-6 rounded-2xl border shadow-sm space-y-4 ${
+                  theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+                }`}>
+                  <h3 className="font-bold text-base">Complaints by Category</h3>
+                  
+                  <div className="space-y-3">
+                    {[
+                      { name: 'Roads & Infra', pct: 40, color: 'bg-indigo-500' },
+                      { name: 'Water Leakage', pct: 25, color: 'bg-blue-500' },
+                      { name: 'Traffic Signals', pct: 18, color: 'bg-amber-500' },
+                      { name: 'Waste Management', pct: 12, color: 'bg-emerald-500' },
+                      { name: 'Streetlights', pct: 5, color: 'bg-purple-500' }
+                    ].map(cat => (
+                      <div key={cat.name} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span>{cat.name}</span>
+                          <span>{cat.pct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div className={`h-full ${cat.color}`} style={{ width: `${cat.pct}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Efficiency Metric Card */}
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-xl space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-5 h-5 text-indigo-200" />
+                    <h4 className="font-bold text-sm">AI Autonomous Savings</h4>
+                  </div>
+                  <p className="text-xs text-indigo-100">
+                    By filtering duplicate submissions and accurately computing urgency based on infrastructure proximity, Civic AI has accelerated resolution rates by <strong className="text-white">35% citywide</strong>.
+                  </p>
+                  <div className="pt-2 flex justify-between items-center text-xs border-t border-indigo-400/30">
+                    <span>Duplicate Rate Filtered</span>
+                    <strong className="text-emerald-300">22.4%</strong>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* ========================================================================= */}
+      {/* COMPLAINT DETAIL MODAL / TRIAGE DRAWER */}
+      {/* ========================================================================= */}
+      {selectedComplaint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-2xl rounded-3xl border shadow-2xl max-h-[90vh] overflow-y-auto ${
+            theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}>
+            
+            {/* Modal Header Image */}
+            <div className="relative h-56 w-full bg-slate-800">
+              <img src={selectedComplaint.photoUrl} alt={selectedComplaint.title} className="w-full h-full object-cover" />
+              <button
+                onClick={() => setSelectedComplaint(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-slate-900/80 text-white hover:bg-slate-900 transition shadow"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="absolute bottom-4 left-4 bg-slate-900/90 text-white px-3 py-1 rounded-lg text-xs font-mono">
+                {selectedComplaint.id}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-start gap-4">
+                <div>
+                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">{selectedComplaint.category}</span>
+                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100">{selectedComplaint.title}</h2>
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-500" /> {selectedComplaint.location}
+                  </p>
+                </div>
+                <span className={`px-3 py-1.5 rounded-xl font-black text-sm text-white shrink-0 ${
+                  selectedComplaint.severity >= 8 ? 'bg-red-600' : 'bg-amber-600'
+                }`}>
+                  AI Severity: {selectedComplaint.severity}/10
+                </span>
+              </div>
+
+              {/* Description Box */}
+              <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Citizen Report Details</h4>
+                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300">{selectedComplaint.description}</p>
+              </div>
+
+              {/* AI Diagnostic Breakdown */}
+              <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
+                    <Bot className="w-4 h-4" /> AI Diagnostics & Routing Analysis
+                  </h4>
+                  <span className="text-xs font-bold text-indigo-400">{selectedComplaint.aiConfidence} Confidence</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">{selectedComplaint.aiNotes}</p>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-indigo-500/10">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Recommended Dept</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{selectedComplaint.department}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Duplicates Merged</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{selectedComplaint.duplicateCount} Nearby Reports</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline Stepper */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Resolution Workflow Progress</h4>
+                <div className="space-y-2">
+                  {selectedComplaint.timeline.map((item, idx) => (
+                    <div key={idx} className="flex items-start space-x-3 text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold">{item.status}</span>
+                          <span className="text-[10px] text-slate-400">{item.time}</span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 text-[11px]">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Authority Actions */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Update Authority Status</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => updateComplaintStatus(selectedComplaint.id, 'Assigned to Dept')}
+                    className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow"
+                  >
+                    Assign to Dept Team
+                  </button>
+                  <button
+                    onClick={() => updateComplaintStatus(selectedComplaint.id, 'In Progress')}
+                    className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow"
+                  >
+                    Dispatch Field Crew
+                  </button>
+                  <button
+                    onClick={() => updateComplaintStatus(selectedComplaint.id, 'Resolved')}
+                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow"
+                  >
+                    Mark as Resolved
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
