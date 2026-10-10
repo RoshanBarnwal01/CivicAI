@@ -1,15 +1,45 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { useNavigate } from 'react-router-dom';
 
 export default function CitizenLogin() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const navigate = useNavigate(); // Initialize hook
+  const [isRegistering, setIsRegistering] = useState(false);
+  const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Logging in citizen:", email);
-    navigate('/dashboard'); // Route to the dashboard
+
+    // 1. Matches the exact routes from your teammate's backend code
+    const endpoint = isRegistering ? '/api/auth/citizen/signup' : '/api/auth/citizen/login';
+
+    // 2. Includes the 'name' field only if the user is registering
+    const payload = isRegistering ? { name, email, password } : { email, password };
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        if (isRegistering) {
+          alert("Account created successfully! You can now log in.");
+          setIsRegistering(false);
+          setPassword(''); // Clear password for security
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.message || `${isRegistering ? 'Registration' : 'Login'} failed.`);
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Could not connect to the backend server.");
+    }
   };
 
   return (
@@ -19,16 +49,37 @@ export default function CitizenLogin() {
           🏛️
         </div>
         <h2 className="mt-4 text-center text-3xl font-bold text-slate-900 tracking-tight">
-          CivicPulse Portal
+          Citizen Portal
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600 font-medium">
-          Official Citizen Reporting System
+        <p className="mt-2 text-center text-sm text-slate-600">
+          {isRegistering ? "Create your account to report issues." : "Sign in to your account."}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-md border-t-4 border-blue-900 sm:rounded-sm sm:px-10">
-          <form className="space-y-6" onSubmit={handleLogin}>
+        <div className="bg-white py-8 px-4 shadow-xl border-t-4 border-blue-900 sm:rounded-sm sm:px-10">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+
+            {/* The Name field only appears when registering */}
+            {isRegistering && (
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold text-slate-900">
+                  Full Name
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="name"
+                    type="text"
+                    required={isRegistering}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                    placeholder="Rishav Ghosh"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-slate-900">
                 Email Address
@@ -40,8 +91,8 @@ export default function CitizenLogin() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm rounded-sm"
-                  placeholder="name@example.com"
+                  className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
+                  placeholder="citizen@example.com"
                 />
               </div>
             </div>
@@ -57,7 +108,7 @@ export default function CitizenLogin() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm rounded-sm"
+                  className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
@@ -68,24 +119,21 @@ export default function CitizenLogin() {
                 type="submit"
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent shadow-sm text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 rounded-sm transition-colors"
               >
-                Secure Login
+                {isRegistering ? 'Register Account' : 'Secure Login'}
               </button>
             </div>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-600">
-              Need an account?{' '}
-              <a href="#" className="font-bold text-blue-900 hover:text-blue-700 underline">
-                Register as a Citizen
-              </a>
-            </p>
+            <button
+              onClick={() => setIsRegistering(!isRegistering)}
+              className="text-sm font-medium text-blue-900 hover:text-blue-700 focus:outline-none"
+            >
+              {isRegistering
+                ? "Already have an account? Log in here."
+                : "Don't have an account? Register here."}
+            </button>
           </div>
-        </div>
-
-        <div className="mt-6 text-center text-xs text-slate-500">
-          <p>An official website of the local municipal government.</p>
-          <p className="mt-1">Unauthorized access is strictly prohibited.</p>
         </div>
       </div>
     </div>
