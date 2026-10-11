@@ -8,13 +8,16 @@ export default function OfficerLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // CLOUD-READY VARIABLE
+  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
 
     try {
-      const response = await fetch('http://127.0.0.1:5005/api/auth/login', {
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -24,7 +27,6 @@ export default function OfficerLogin() {
 
       if (response.ok) {
         localStorage.setItem('token', data.token);
-        // CORRECTED ROUTE: Now redirects to the Officer Dashboard
         navigate('/officer-dashboard');
       } else {
         setErrorMsg(data.message || 'Invalid credentials.');
@@ -80,10 +82,7 @@ export default function OfficerLogin() {
             <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Officer ID</label>
               <input
-                type="text"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text" required value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="gov"
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
@@ -92,10 +91,7 @@ export default function OfficerLogin() {
             <div>
               <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Security Passcode</label>
               <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />

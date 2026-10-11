@@ -8,7 +8,6 @@ export default function CitizenDashboard() {
   const [issues, setIssues] = useState([]);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Form State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Road Hazard / Pothole');
   const [description, setDescription] = useState('');
@@ -24,15 +23,14 @@ export default function CitizenDashboard() {
 
   const navigate = useNavigate();
 
-  // FIXED: Pointing directly to our active, unblocked IPv4 port
-  const baseUrl = 'http://127.0.0.1:5005';
+  // CLOUD-READY VARIABLE
+  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
   useEffect(() => {
     fetchUserData();
     fetchCitizenReports();
   }, []);
 
-  // Initialize Leaflet Map
   useEffect(() => {
     if (activeTab === 'map' && mapRef.current && !mapInstanceRef.current) {
       const map = L.map(mapRef.current).setView([coords.lat, coords.lng], 13);
@@ -58,7 +56,6 @@ export default function CitizenDashboard() {
     }
   }, [activeTab]);
 
-  // Auto-detect address and match municipality based on lat/lng using Nominatim OpenStreetMap API
   const updateLocationData = async (lat, lng) => {
     setCoords({ lat, lng });
     setIsLocating(true);
@@ -71,25 +68,15 @@ export default function CitizenDashboard() {
         const fullAddress = data.display_name;
         setAddress(fullAddress);
 
-        // Smart Municipality Matcher based on location text
         const textLower = fullAddress.toLowerCase();
-        if (textLower.includes('panihati')) {
-          setMunicipality('Panihati Municipality');
-        } else if (textLower.includes('baranagar')) {
-          setMunicipality('Baranagar Municipality');
-        } else if (textLower.includes('kamarhati')) {
-          setMunicipality('Kamarhati Municipality');
-        } else if (textLower.includes('dum dum')) {
-          setMunicipality('South Dum Dum Municipality');
-        } else if (textLower.includes('bidhannagar') || textLower.includes('salt lake')) {
-          setMunicipality('Bidhannagar Municipal Corporation');
-        } else if (textLower.includes('howrah')) {
-          setMunicipality('Howrah Municipal Corporation');
-        } else if (textLower.includes('barrackpore')) {
-          setMunicipality('Barrackpore Municipality');
-        } else {
-          setMunicipality('Kolkata Municipal Corporation');
-        }
+        if (textLower.includes('panihati')) setMunicipality('Panihati Municipality');
+        else if (textLower.includes('baranagar')) setMunicipality('Baranagar Municipality');
+        else if (textLower.includes('kamarhati')) setMunicipality('Kamarhati Municipality');
+        else if (textLower.includes('dum dum')) setMunicipality('South Dum Dum Municipality');
+        else if (textLower.includes('bidhannagar') || textLower.includes('salt lake')) setMunicipality('Bidhannagar Municipal Corporation');
+        else if (textLower.includes('howrah')) setMunicipality('Howrah Municipal Corporation');
+        else if (textLower.includes('barrackpore')) setMunicipality('Barrackpore Municipality');
+        else setMunicipality('Kolkata Municipal Corporation');
       }
     } catch (err) {
       console.error("Geocoding lookup failed:", err);
@@ -187,8 +174,6 @@ export default function CitizenDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex">
-
-      {/* Left Sidebar Navigation */}
       <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col justify-between shrink-0">
         <div>
           <div className="flex items-center gap-3 mb-10">
@@ -198,23 +183,19 @@ export default function CitizenDashboard() {
 
           <div className="space-y-1.5">
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Overview</div>
-
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               📊 Dashboard
             </button>
-
             <button
               onClick={() => setActiveTab('map')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'map' ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
             >
               📍 Map & Report
             </button>
-
             <div className="pt-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Configuration</div>
-
             <button
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'settings' ? 'bg-blue-50 text-blue-600 font-semibold shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}
@@ -234,10 +215,7 @@ export default function CitizenDashboard() {
         </div>
       </aside>
 
-      {/* Right Content Area */}
       <main className="flex-1 p-10 overflow-y-auto">
-
-        {/* Top Header */}
         <header className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -254,7 +232,6 @@ export default function CitizenDashboard() {
           </div>
         </header>
 
-        {/* TAB 1: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -304,12 +281,10 @@ export default function CitizenDashboard() {
                             {issue.severity || 'Normal'}
                           </span>
                         </div>
-
                         <div className="col-span-5">
                           <div className="font-semibold text-slate-900 text-sm">{issue.title}</div>
                           <div className="text-xs text-slate-400 mt-0.5">{issue.category} - 📍 {issue.address}</div>
                         </div>
-
                         <div className="col-span-4 text-right">
                           <span className={`inline-block px-2.5 py-1 text-xs font-semibold uppercase tracking-wider rounded-lg border ${issue.status === 'open' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                               issue.status === 'in_progress' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -327,10 +302,8 @@ export default function CitizenDashboard() {
           </div>
         )}
 
-        {/* TAB 2: MAP & REPORTING SECTION */}
         {activeTab === 'map' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column: Report Form */}
             <div className="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900 mb-1">Report Issue via Map Pin</h2>
               <p className="text-xs text-slate-500 mb-6">Drag pin or click map to auto-detect location and municipality.</p>
@@ -405,7 +378,6 @@ export default function CitizenDashboard() {
               </form>
             </div>
 
-            {/* Right Column: Large Leaflet Map */}
             <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">Interactive Dispatch Map (Click or Drag Pin)</div>
               <div ref={mapRef} className="w-full h-[520px] rounded-xl border border-slate-200 z-10" />
@@ -413,7 +385,6 @@ export default function CitizenDashboard() {
           </div>
         )}
 
-        {/* TAB 3: PROFILE SETTINGS */}
         {activeTab === 'settings' && (
           <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-xl shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900 mb-1">Profile Settings</h2>

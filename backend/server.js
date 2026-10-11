@@ -3,33 +3,32 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
+// Import Routes
+const authRoutes = require("./routes/auth.routes");
+const userRoutes = require("./routes/user.routes");
+const issueRoutes = require("./routes/issues.routes"); // Adjust if your file is named differently
+
 const app = express();
 
-// 1. CORS & JSON Middleware
-app.use(cors({ origin: "*" }));
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// 2. Request Tracker (Logs every request to the terminal so we know it connected)
-app.use((req, res, next) => {
-  console.log(`➡️  Incoming request: ${req.method} ${req.url}`);
-  next();
-});
+// Register Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/issues", issueRoutes);
 
-// 3. Routes
-app.use("/api/auth", require("./routes/auth.routes"));
-app.use("/api/users", require("./routes/user.routes"));
-app.use("/api/issues", require("./routes/issue.routes"));
-
-// 4. Database Connection & Server Start (Forced to 127.0.0.1)
-const PORT = 5005;
+// CLOUD-READY CONFIGURATION: Fallback to local if env variables are not present
+const PORT = process.env.PORT || 5005;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/civicpulse";
 
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB successfully");
-    // Explicitly bind to IPv4 local address
-    app.listen(PORT, "127.0.0.1", () => {
-      console.log(`🚀 Server running strictly at http://127.0.0.1:${PORT}`);
+    // Removed '127.0.0.1' so Render can expose the server to the internet
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
