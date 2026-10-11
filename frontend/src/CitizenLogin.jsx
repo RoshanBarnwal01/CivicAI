@@ -95,4 +95,55 @@ export default function CitizenLogin() {
                 <input
                   type="text" required value={name} onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., John Doe"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+              <input
+                type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="citizen@example.com"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Password</label>
+              <input
+                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg mt-4 transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+            </button>
+          </form>
+
+          {/* Toggle Login/Register */}
+          <div className="mt-6 text-center text-sm font-medium text-slate-600">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setErrorMsg('');
+              }}
+              className="text-blue-600 font-bold hover:underline focus:outline-none"
+            >
+              {isLogin ? 'Register here' : 'Sign in here'}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
