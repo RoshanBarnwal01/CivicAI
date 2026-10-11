@@ -1,31 +1,34 @@
-// Auth middleware = the security guard of the API.
-// It reads the login token (JWT) from the request header, checks it,
-// and only lets the request through if the token is valid.
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 const auth = async (req, res, next) => {
     try {
-        // Expected header: Authorization: Bearer <token>
-        const header = req.headers.authorization || "";
-        const token = header.startsWith("Bearer ") ? header.split(" ")[1] : null;
-        if (!token) return res.status(401).json({ message: "No token, login required" });
+        const authHeader = req.header("Authorization");
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({ message: "No authentication token" });
+        }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id);
-        if (!user) return res.status(401).json({ message: "User no longer exists" });
+        const token = authHeader.replace("Bearer ", "");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_key");
 
-        req.user = user; // attach the logged-in user to the request
-        next(); // allow the request to continue to the route
-    } catch {
-        res.status(401).json({ message: "Invalid or expired token" });
+        // BYPASS DATABASE LOOKUP FOR OFFICER
+        if (decoded.email === 'gov' || decoded.role === 'officer') {
+            req.user = { _id: "admin_999", email: "gov", role: "officer", name: "Chief Municipal Officer" };
+            return next();
+        }
+
+        // STANDARD CITIZEN LOOKUP
+        const user = await User.findById(decoded._id).select("-password");
+        if (!user) {
+            return res.status(401).json({ message: "Token is valid, but user no longer exists" });
+        }
+
+        req.user = { _id: user._id, email: user.email, role: user.role || 'citizen', name: user.name };
+        next();
+    } catch (err) {
+        console.error("🔴 AUTH MIDDLEWARE ERROR:", err.message);
+        res.status(401).json({ message: "Token is not valid" });
     }
 };
 
-// Same as auth, but also checks the user is admin or officer.
-const staffOnly = (req, res, next) => {
-    if (req.user && ["admin", "officer"].includes(req.user.role)) return next();
-    res.status(403).json({ message: "Staff access only" });
-};
-
-module.exports = { auth, staffOnly };
+module.exports = { auth };

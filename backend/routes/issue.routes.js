@@ -1,86 +1,113 @@
-// Issue routes: create, list, view, upvote and manage complaints.
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const Issue = require("../models/Issue");
-const { auth, staffOnly } = require("../middleware/auth");
+const { auth } = require("../middleware/auth");
 
-// ---------- PRIORITY SCORE ----------
-// Transparent 0-100 score so authorities know what to fix first.
-const SEVERITY_POINTS = { low: 20, medium: 50, high: 80 };
-const calcPriority = (issue) => {
-    let score = SEVERITY_POINTS[issue.severity] || 20;
-    score += Math.min(3 * (issue.upvotes + issue.duplicateCount), 15); // crowd bonus
-    const daysOpen = Math.floor((Date.now() - new Date(issue.createdAt)) / 86400000);
-    score += Math.min(2 * daysOpen, 15); // urgency bonus
-    return Math.max(0, Math.min(100, Math.round(score)));
-};
-
-// POST /api/issues â€” report a new issue (citizen must be logged in)
+// POST: Create new report & Intercept with AI Microservice
 router.post("/", auth, async (req, res) => {
     try {
-        const { title, description, category, severity, location, imageUrl, audioUrl } = req.body;
-        if (!title || !description || !location)
-            return res.status(400).json({ message: "title, description and location are required" });
+        const { title, category, description, address, municipality, location } = req.body;
+        let aiCategory = category;
+        let aiSeverity = "medium";
+        let aiConfidence = 0;
 
-        const issue = await Issue.create({
+        try {
+            const aiText = `${title}. ${description}`;
+            const catResponse = await fetch("http://localhost:8000/ai/predict-category", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: aiText })
+            });
+            const sevResponse = await fetch("http://localhost:8000/ai/predict-severity", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: aiText })
+            });
+
+            const catData = await catResponse.json();
+            const sevData = await sevResponse.json();
+
+            if (catData.confidence >= 0.7) {
+                aiCategory = catData.predicted_category;
+                aiConfidence = catData.confidence;
+            }
+            aiSeverity = sevData.predicted_severity;
+        } catch (aiError) {
+            console.error("⚠️ AI Microservice Offline. Bypassing AI sorting.");
+        }
+
+        // Format location properly for GeoJSON / Schema requirements ([lng, lat])
+        const lat = location?.lat || 22.5726;
+        const lng = location?.lng || 88.3639;
+
+        const newIssue = new Issue({
             title,
+            category: aiCategory,
+            severity: aiSeverity,
+            ai_confidence: aiConfidence,
             description,
-            category: category || "other",
-            severity: severity || "medium",
-            location, // { type: "Point", coordinates: [lng, lat] }
-            imageUrl: imageUrl || "",
-            audioUrl: audioUrl || "",
-            createdBy: req.user._id,
+            address: address || "Kolkata, West Bengal",
+            municipality: municipality || "Kolkata Municipal Corporation",
+            location: {
+                type: "Point",
+                coordinates: [lng, lat],
+                lat: lat,
+                lng: lng
+            },
+            user: req.user._id,
+            status: "open"
         });
 
-        issue.priorityScore = calcPriority(issue);
-        await issue.save();
-        res.status(201).json({ issue });
+        await newIssue.save();
+        console.log(`✅ Saved new issue to Database: ${title}`);
+        res.status(201).json(newIssue);
     } catch (err) {
+        console.error("🔴 ISSUE SUBMIT DATABASE ERROR:", err.message);
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
 
-// GET /api/issues â€” list issues. Sorted by priority (default). Optional filters.
-router.get("/", async (req, res) => {
+// GET: Citizen fetches their own reports
+router.get("/my-reports", auth, async (req, res) => {
     try {
-        const { status, category, sort } = req.query;
-        const filter = {};
-        if (status) filter.status = status;
-        if (category) filter.category = category;
-
-        const sortRule = sort === "new" ? { createdAt: -1 } : { priorityScore: -1 };
-        const issues = await Issue.find(filter).sort(sortRule).limit(100);
-        res.json({ issues });
+        const issues = await Issue.find({ user: req.user._id }).sort({ createdAt: -1 });
+        res.json(issues);
     } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
+        res.status(500).json({ message: "Server error" });
     }
 });
 
-// GET /api/issues/:id â€” one issue's full details
-router.get("/:id", async (req, res) => {
+// GET: Officer fetches ALL global reports
+router.get("/all", auth, async (req, res) => {
     try {
-        const issue = await Issue.findById(req.params.id).populate("createdBy", "name");
-        if (!issue) return res.status(404).json({ message: "Issue not found" });
-        res.json({ issue });
-    } catch {
-        res.status(400).json({ message: "Invalid issue id" });
+        if (req.user.role !== 'officer') {
+            return res.status(403).json({ message: "Access denied." });
+        }
+        const issues = await Issue.find().sort({ ai_confidence: -1, createdAt: -1 });
+        res.json(issues);
+    } catch (err) {
+        res.status(500).json({ message: "Server error fetching all issues" });
     }
 });
 
-// POST /api/issues/:id/upvote â€” +1 support from a citizen
-router.post("/:id/upvote", auth, async (req, res) => {
+// PUT: Officer updates an issue's status
+router.put("/:id/status", auth, async (req, res) => {
     try {
-        const issue = await Issue.findById(req.params.id);
-        if (!issue) return res.status(404).json({ message: "Issue not found" });
-        if (issue.status === "resolved")
-            return res.status(400).json({ message: "Already resolved" });
+        if (req.user.role !== 'officer') return res.status(403).json({ message: "Access denied." });
+        const { status } = req.body;
+        const updatedIssue = await Issue.findByIdAndUpdate(req.params.id, { status }, { new: true });
+        res.json(updatedIssue);
+    } catch (err) {
+        res.status(500).json({ message: "Server error updating status" });
+    }
+});
 
-        issue.upvotes += 1;
-        issue.priorityScore = calcPriority(issue);
-        await issue.save();
-        res.json({ issue });
-    } catch {
-        res.status(400).json({ message: "Invalid issue id" });
+// DELETE: Officer removes/deletes an issue report
+router.delete("/:id", auth, async (req, res) => {
+    try {
+        if (req.user.role !== 'officer') {
+            return res.status(403).json({ message: "Access denied." });
+        }
+        await Issue.findByIdAndDelete(req.params.id);
+        res.json({ message: "Issue deleted successfully" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error deleting issue" });
     }
 });
 

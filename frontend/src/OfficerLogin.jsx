@@ -4,78 +4,110 @@ import { useNavigate } from 'react-router-dom';
 export default function OfficerLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Logging in officer:", email);
-    navigate('/officer-dashboard');
+    setIsLoading(true);
+    setErrorMsg('');
+
+    try {
+      const response = await fetch('http://127.0.0.1:5005/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        // CORRECTED ROUTE: Now redirects to the Officer Dashboard
+        navigate('/officer-dashboard');
+      } else {
+        setErrorMsg(data.message || 'Invalid credentials.');
+      }
+    } catch (err) {
+      console.error("Login network error:", err);
+      setErrorMsg('SYSTEM OFFLINE: COULD NOT CONNECT TO THE CENTRAL SERVER.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-5xl">
-          🛡️
+    <div className="min-h-screen flex items-center justify-center bg-[#0a101f] font-sans p-4">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-700">
+
+        <div className="bg-[#0f172a] py-8 px-6 text-center border-b-4 border-blue-600">
+          <div className="flex justify-center mb-3">
+            <svg className="w-10 h-10 text-slate-300" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zm-2 11h-2v6h2v-6zm6 0h-2v6h2v-6zm-10 0H4v6h2v-6zm14 0h-2v6h2v-6z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-widest uppercase mb-1">CivicPulse</h1>
+          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Authorized Personnel Only</p>
         </div>
-        <h2 className="mt-4 text-center text-3xl font-bold text-white tracking-tight">
-          Officer Dashboard
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-400 font-medium">
-          Authorized Government Personnel Only
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-800 py-8 px-4 shadow-xl border-t-4 border-emerald-500 sm:rounded-sm sm:px-10">
-          <form className="space-y-6" onSubmit={handleLogin}>
+        <div className="p-8">
+          <div className="flex bg-slate-50 rounded-lg p-1 mb-8 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex-1 py-2 text-sm font-semibold text-slate-500 rounded-md hover:bg-slate-200 transition-colors"
+            >
+              Citizen
+            </button>
+            <button
+              type="button"
+              className="flex-1 py-2 text-sm font-bold text-white bg-[#0f172a] rounded-md shadow-sm"
+            >
+              Officer
+            </button>
+          </div>
+
+          <h2 className="text-xl font-bold text-center text-slate-800 mb-6">Municipal Dispatch Login</h2>
+
+          {errorMsg && (
+            <div className="mb-6 p-4 bg-rose-50 border-l-4 border-rose-600 text-rose-700 text-[11px] font-bold uppercase tracking-wide">
+              {errorMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-200">
-                Official Email
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-sm"
-                  placeholder="officer@municipality.gov"
-                />
-              </div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Officer ID</label>
+              <input
+                type="text"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="gov"
+                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-slate-200">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-sm"
-                  placeholder="••••••••"
-                />
-              </div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Security Passcode</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
             </div>
 
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent shadow-sm text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-emerald-500 rounded-sm transition-colors"
-              >
-                Authenticate
-              </button>
-            </div>
+            <button
+              type="submit" disabled={isLoading}
+              className="w-full py-4 mt-2 bg-[#0f172a] hover:bg-slate-800 text-white font-black tracking-widest uppercase rounded-lg text-sm transition-colors shadow-lg"
+            >
+              {isLoading ? 'Authenticating...' : 'Access Portal'}
+            </button>
           </form>
-        </div>
-
-        <div className="mt-6 text-center text-xs text-slate-500">
-          <p>Access is monitored and logged.</p>
         </div>
       </div>
     </div>

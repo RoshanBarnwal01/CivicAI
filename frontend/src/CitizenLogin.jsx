@@ -2,137 +2,88 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CitizenLogin() {
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-
-    // 1. Matches the exact routes from your teammate's backend code
-    const endpoint = isRegistering ? '/api/auth/citizen/signup' : '/api/auth/citizen/login';
-
-    // 2. Includes the 'name' field only if the user is registering
-    const payload = isRegistering ? { name, email, password } : { email, password };
+    setIsLoading(true);
+    setErrorMsg('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+      // Strictly using 127.0.0.1 to bypass localhost IPv6 resolution issues
+      const response = await fetch('http://127.0.0.1:5005/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ email, password })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        if (isRegistering) {
-          alert("Account created successfully! You can now log in.");
-          setIsRegistering(false);
-          setPassword(''); // Clear password for security
-        } else {
-          navigate('/dashboard');
-        }
+        localStorage.setItem('token', data.token);
+        navigate('/dashboard');
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.message || `${isRegistering ? 'Registration' : 'Login'} failed.`);
+        setErrorMsg(data.message || 'Invalid email or password.');
       }
-    } catch (error) {
-      console.error("Network error:", error);
-      alert("Could not connect to the backend server.");
+    } catch (err) {
+      console.error("Login network error:", err);
+      // Prints the exact network error to the UI
+      setErrorMsg(`Connection Error: ${err.message}. Check backend terminal.`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-5xl">
-          🏛️
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+        <div className="text-center mb-8">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl mx-auto flex items-center justify-center text-white font-bold mb-3">CP</div>
+          <h1 className="text-xl font-bold text-slate-900">CivicPulse Citizen Portal</h1>
+          <p className="text-xs text-slate-500 mt-1">Sign in to report and track city issues</p>
         </div>
-        <h2 className="mt-4 text-center text-3xl font-bold text-slate-900 tracking-tight">
-          Citizen Portal
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
-          {isRegistering ? "Create your account to report issues." : "Sign in to your account."}
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl border-t-4 border-blue-900 sm:rounded-sm sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+        {errorMsg && (
+          <div className="mb-6 p-3 bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold rounded-lg">
+            {errorMsg}
+          </div>
+        )}
 
-            {/* The Name field only appears when registering */}
-            {isRegistering && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-slate-900">
-                  Full Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="name"
-                    type="text"
-                    required={isRegistering}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                    placeholder="Rishav Ghosh"
-                  />
-                </div>
-              </div>
-            )}
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+            <input
+              type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="name@example.com"
+            />
+          </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-900">
-                Email Address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                  placeholder="citizen@example.com"
-                />
-              </div>
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Password</label>
+            <input
+              type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="••••••••"
+            />
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-slate-900">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-blue-900 sm:text-sm"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
+          <button
+            type="submit" disabled={isLoading}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors mt-2"
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
 
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent shadow-sm text-sm font-bold text-white bg-blue-900 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-900 rounded-sm transition-colors"
-              >
-                {isRegistering ? 'Register Account' : 'Secure Login'}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsRegistering(!isRegistering)}
-              className="text-sm font-medium text-blue-900 hover:text-blue-700 focus:outline-none"
-            >
-              {isRegistering
-                ? "Already have an account? Log in here."
-                : "Don't have an account? Register here."}
-            </button>
+        <div className="mt-6 text-center text-xs text-slate-500">
+          Don't have an account? <span onClick={() => navigate('/register')} className="text-blue-600 font-semibold cursor-pointer hover:underline">Register</span>
+          <div className="mt-3">
+            <span onClick={() => navigate('/officer')} className="text-slate-400 cursor-pointer hover:underline">Switch to Officer Portal</span>
           </div>
         </div>
       </div>
