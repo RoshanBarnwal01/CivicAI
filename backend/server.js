@@ -5,8 +5,8 @@ require("dotenv").config();
 
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
-const userRoutes = require("./routes/user.routes");
-const issueRoutes = require("./routes/issues.routes"); // Adjust if your file is named differently
+const userRoutes = require("./routes/userRoutes"); // Matches exactly with your renamed file
+const issueRoutes = require("./routes/issue.routes"); // Fixed the extra "s" to match your file explorer
 
 const app = express();
 
