@@ -13,7 +13,7 @@ export default function CitizenLogin() {
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
-  // Pre-wake Render server on page load to eliminate login delay
+  // Pre-wake Render server on page load
   useEffect(() => {
     fetch(`${baseUrl}/api/health`).catch(() => { });
   }, [baseUrl]);
@@ -35,9 +35,16 @@ export default function CitizenLogin() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        localStorage.clear();
+      if (response.ok && data.token) {
+        // Store Citizen token & profile separately from Officer session
+        localStorage.setItem('citizenToken', data.token);
         localStorage.setItem('token', data.token);
+        const citizenProfile = data.user || {
+          name: name || email.split('@')[0],
+          email,
+          role: 'citizen'
+        };
+        localStorage.setItem('citizenUser', JSON.stringify(citizenProfile));
         navigate('/dashboard');
       } else {
         setErrorMsg(data.message || 'Authentication failed. Please check your credentials.');

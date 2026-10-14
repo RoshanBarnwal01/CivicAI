@@ -35,9 +35,9 @@ export default function OfficerLogin() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        localStorage.clear();
-        localStorage.setItem('token', data.token);
+      if (response.ok && data.token) {
+        // Store Officer token separately so it never collides with Citizen sessions
+        localStorage.setItem('officerToken', data.token);
         navigate('/officer-dashboard');
       } else {
         setErrorMsg(data.message || 'Unauthorized Officer credentials.');

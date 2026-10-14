@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export default function OfficerDashboard() {
-  const [user, setUser] = useState(null);
+  const [user] = useState({ name: 'Chief Municipal Officer', email: 'gov', role: 'officer' });
   const [issues, setIssues] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('command-center');
@@ -18,6 +18,10 @@ export default function OfficerDashboard() {
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
+  const getOfficerToken = () => {
+    return localStorage.getItem('officerToken') || localStorage.getItem('token');
+  };
+
   const toggleTheme = () => {
     const nextMode = !isDarkMode;
     setIsDarkMode(nextMode);
@@ -25,32 +29,16 @@ export default function OfficerDashboard() {
   };
 
   const fetchGlobalIssues = async () => {
-    const token = localStorage.getItem('token');
+    const token = getOfficerToken();
     if (!token) {
       navigate('/officer');
       return;
     }
 
     try {
-      const [userRes, issuesRes] = await Promise.all([
-        fetch(`${baseUrl}/api/users/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`${baseUrl}/api/issues/all`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
-
-      if (userRes.status === 401 || userRes.status === 403 || issuesRes.status === 401 || issuesRes.status === 403) {
-        localStorage.removeItem('token');
-        navigate('/officer');
-        return;
-      }
-
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        setUser(userData);
-      }
+      const issuesRes = await fetch(`${baseUrl}/api/issues/all`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
       if (issuesRes.ok) {
         const issuesData = await issuesRes.json();
@@ -119,7 +107,7 @@ export default function OfficerDashboard() {
   }, [activeTab, issues]);
 
   const updateStatus = async (id, newStatus) => {
-    const token = localStorage.getItem('token');
+    const token = getOfficerToken();
     try {
       const res = await fetch(`${baseUrl}/api/issues/${id}/status`, {
         method: 'PUT',
@@ -141,7 +129,7 @@ export default function OfficerDashboard() {
   };
 
   const handleDelete = async (id) => {
-    const token = localStorage.getItem('token');
+    const token = getOfficerToken();
     try {
       const res = await fetch(`${baseUrl}/api/issues/${id}`, {
         method: 'DELETE',
@@ -157,7 +145,7 @@ export default function OfficerDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('officerToken');
     navigate('/officer');
   };
 

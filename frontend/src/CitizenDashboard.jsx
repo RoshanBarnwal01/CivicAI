@@ -4,7 +4,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export default function CitizenDashboard() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('citizenUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [reports, setReports] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -26,8 +33,12 @@ export default function CitizenDashboard() {
 
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
+  const getCitizenToken = () => {
+    return localStorage.getItem('citizenToken') || localStorage.getItem('token');
+  };
+
   const fetchDashboardData = async () => {
-    const token = localStorage.getItem('token');
+    const token = getCitizenToken();
     if (!token) {
       navigate('/');
       return;
@@ -43,19 +54,13 @@ export default function CitizenDashboard() {
         })
       ]);
 
-      if (userRes.status === 401 || userRes.status === 403) {
-        localStorage.clear();
-        navigate('/');
-        return;
-      }
-
       if (userRes.ok) {
         const userData = await userRes.json();
-        if (userData.role === 'officer') {
-          navigate('/officer-dashboard');
-          return;
+        // Never redirect Citizen Dashboard to Officer Dashboard; only update if valid citizen data
+        if (userData && userData.email !== 'gov' && userData.role !== 'officer') {
+          setUser(userData);
+          localStorage.setItem('citizenUser', JSON.stringify(userData));
         }
-        setUser(userData);
       }
 
       if (reportsRes.ok) {
@@ -166,7 +171,7 @@ export default function CitizenDashboard() {
     setIsSubmitting(true);
     setStatusMessage({ type: '', text: '' });
 
-    const token = localStorage.getItem('token');
+    const token = getCitizenToken();
     try {
       const response = await fetch(`${baseUrl}/api/issues`, {
         method: 'POST',
@@ -208,7 +213,9 @@ export default function CitizenDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('citizenToken');
+    localStorage.removeItem('citizenUser');
+    localStorage.removeItem('token');
     navigate('/');
   };
 
@@ -481,7 +488,7 @@ export default function CitizenDashboard() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase">Account Role</label>
-                <p className="text-sm font-bold text-blue-600 uppercase mt-1">{user?.role || 'citizen'}</p>
+                <p className="text-sm font-bold text-blue-600 uppercase mt-1">citizen</p>
               </div>
             </div>
           </div>
