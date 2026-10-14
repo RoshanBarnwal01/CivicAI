@@ -3,6 +3,49 @@ import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Live AI Triage Severity Evaluator
+function evaluateIssueSeverity(issue) {
+  const text = `${issue?.title || ''} ${issue?.description || ''}`.toLowerCase().trim();
+
+  const highKeywords = [
+    'high', 'huge', 'urgent', 'emergency', 'critical', 'severe', 'severity',
+    'danger', 'dangerous', 'massive', 'burst', 'accident', 'crash',
+    'injury', 'injured', 'deep', 'fire', 'smoke', 'spark', 'shock',
+    'electrocut', 'live wire', 'exposed wire', 'short circuit',
+    'collapse', 'collapsed', 'sinkhole', 'flood', 'flooding',
+    'waterlogging', 'submerged', 'sewage', 'contaminated', 'toxic',
+    'blocking', 'blocked', 'unpassable', 'hospital', 'school',
+    'ambulance', 'hazard', 'hazardous', 'major', 'worst', 'deadly',
+    'fatal', 'open manhole', 'uncovered manhole', 'fallen tree',
+    'fallen pole', 'gas leak', 'explosion', 'big problem', 'huge problem'
+  ];
+
+  const lowKeywords = [
+    'low', 'minor', 'small', 'slight', 'little', 'cosmetic',
+    'faded', 'not urgent', 'slow', 'dust', 'peeling', 'tiny'
+  ];
+
+  const mediumKeywords = [
+    'medium', 'moderate', 'leak', 'leaking', 'broken', 'outage',
+    'overflow', 'overflowing', 'pothole', 'crater', 'damaged',
+    'damage', 'garbage', 'trash', 'rubbish', 'waste', 'dump',
+    'filth', 'stink', 'smell', 'odor', 'dark', 'street light',
+    'streetlight', 'lamp', 'flickering', 'not working', 'drain',
+    'drainage', 'clogged', 'choked', 'stagnant', 'mosquito',
+    'pipe', 'no water', 'water supply', 'low pressure', 'repair',
+    'crack', 'bad condition', 'unsafe', 'dirty', 'issue', 'problem'
+  ];
+
+  if (highKeywords.some((kw) => text.includes(kw))) return 'high';
+  if (lowKeywords.some((kw) => text.includes(kw))) return 'low';
+  if (mediumKeywords.some((kw) => text.includes(kw))) return 'medium';
+
+  // Short test inputs without hazard keywords (e.g., "eeee", "www") triage as low
+  if (text.length < 12) return 'low';
+
+  return issue?.severity && issue.severity !== 'medium' ? issue.severity : 'medium';
+}
+
 export default function OfficerDashboard() {
   const [user] = useState({ name: 'Chief Municipal Officer', email: 'gov', role: 'officer' });
   const [issues, setIssues] = useState([]);
@@ -42,7 +85,11 @@ export default function OfficerDashboard() {
 
       if (issuesRes.ok) {
         const issuesData = await issuesRes.json();
-        setIssues(Array.isArray(issuesData) ? issuesData : []);
+        const triagedIssues = (Array.isArray(issuesData) ? issuesData : []).map((item) => ({
+          ...item,
+          severity: evaluateIssueSeverity(item)
+        }));
+        setIssues(triagedIssues);
       }
     } catch (err) {
       console.error("Failed to fetch global issues:", err);
@@ -85,7 +132,9 @@ export default function OfficerDashboard() {
               ? '#10b981'
               : issue.severity === 'high' || issue.severity === 'critical'
                 ? '#ef4444'
-                : '#f59e0b';
+                : issue.severity === 'medium'
+                  ? '#f59e0b'
+                  : '#3b82f6';
 
           const markerIcon = L.divIcon({
             className: 'tactical-marker',
@@ -97,7 +146,7 @@ export default function OfficerDashboard() {
           L.marker([lat, lng], { icon: markerIcon })
             .addTo(map)
             .bindPopup(
-              `<strong>${issue.title}</strong><br/>Category: ${issue.category || 'N/A'}<br/>Status: ${issue.status}`
+              `<strong>${issue.title}</strong><br/>Category: ${issue.category || 'N/A'}<br/>Severity: ${issue.severity.toUpperCase()}<br/>Status: ${issue.status}`
             );
         }
       });
@@ -285,7 +334,7 @@ export default function OfficerDashboard() {
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                 : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                             }`}>
-                            {issue.severity || 'medium'}
+                            {issue.severity || 'low'}
                           </span>
                           <div className="text-xs text-slate-400 mt-1 font-medium">{issue.category || 'General'}</div>
                         </td>

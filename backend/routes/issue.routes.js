@@ -3,19 +3,11 @@ const router = express.Router();
 const Issue = require("../models/Issue");
 const auth = require("../middleware/auth");
 
-// Built-in AI Triage Engine (Runs natively on Render with 0ms latency)
 function analyzeCivicIssue(title = "", description = "", selectedCategory = "") {
-    const text = `${title} ${description}`.toLowerCase();
+    const text = `${title} ${description}`.toLowerCase().trim();
 
-    // 1. Explicit Low-Severity Indicators
-    const lowKeywords = [
-        "low", "minor", "small", "slight", "little", "cosmetic",
-        "faded", "not urgent", "slow", "dust", "peeling"
-    ];
-
-    // 2. High / Critical Severity Indicators
     const highKeywords = [
-        "high", "huge", "urgent", "emergency", "critical", "severe",
+        "high", "huge", "urgent", "emergency", "critical", "severe", "severity",
         "danger", "dangerous", "massive", "burst", "accident", "crash",
         "injury", "injured", "deep", "fire", "smoke", "spark", "shock",
         "electrocut", "live wire", "exposed wire", "short circuit",
@@ -24,10 +16,14 @@ function analyzeCivicIssue(title = "", description = "", selectedCategory = "") 
         "blocking", "blocked", "unpassable", "hospital", "school",
         "ambulance", "hazard", "hazardous", "major", "worst", "deadly",
         "fatal", "open manhole", "uncovered manhole", "fallen tree",
-        "fallen pole", "gas leak", "explosion"
+        "fallen pole", "gas leak", "explosion", "big problem", "huge problem"
     ];
 
-    // 3. Medium Severity Indicators
+    const lowKeywords = [
+        "low", "minor", "small", "slight", "little", "cosmetic",
+        "faded", "not urgent", "slow", "dust", "peeling", "tiny"
+    ];
+
     const mediumKeywords = [
         "medium", "moderate", "leak", "leaking", "broken", "outage",
         "overflow", "overflowing", "pothole", "crater", "damaged",
@@ -36,11 +32,11 @@ function analyzeCivicIssue(title = "", description = "", selectedCategory = "") 
         "streetlight", "lamp", "flickering", "not working", "drain",
         "drainage", "clogged", "choked", "stagnant", "mosquito",
         "pipe", "no water", "water supply", "low pressure", "repair",
-        "crack", "bad condition", "unsafe"
+        "crack", "bad condition", "unsafe", "dirty", "issue", "problem"
     ];
 
-    let severity = "low";
-    let confidence = 0.78;
+    let severity = "medium";
+    let confidence = 0.85;
 
     if (highKeywords.some((kw) => text.includes(kw))) {
         severity = "high";
@@ -51,27 +47,12 @@ function analyzeCivicIssue(title = "", description = "", selectedCategory = "") 
     } else if (mediumKeywords.some((kw) => text.includes(kw))) {
         severity = "medium";
         confidence = 0.86;
-    } else if (selectedCategory === "Public Safety & Hazards") {
-        severity = "medium";
-        confidence = 0.84;
+    } else if (text.length < 12) {
+        severity = "low";
+        confidence = 0.78;
     }
 
-    // Auto-detect category only if none was specified
     let category = selectedCategory || "General";
-    if (!selectedCategory || selectedCategory === "General") {
-        if (text.includes("pothole") || text.includes("road") || text.includes("bridge") || text.includes("footpath")) {
-            category = "Roads & Infrastructure";
-        } else if (text.includes("water") || text.includes("drain") || text.includes("pipe") || text.includes("flood") || text.includes("sewage")) {
-            category = "Water Supply & Drainage";
-        } else if (text.includes("light") || text.includes("wire") || text.includes("electric") || text.includes("pole") || text.includes("shock")) {
-            category = "Street Lighting & Electrical";
-        } else if (text.includes("garbage") || text.includes("trash") || text.includes("waste") || text.includes("dump") || text.includes("smell")) {
-            category = "Sanitation & Waste";
-        } else if (text.includes("fire") || text.includes("danger") || text.includes("accident") || text.includes("hazard")) {
-            category = "Public Safety & Hazards";
-        }
-    }
-
     return { severity, category, confidence };
 }
 
@@ -80,52 +61,8 @@ router.post("/", auth, async (req, res) => {
     try {
         const { title, description, category, address, municipality, location } = req.body;
 
-        // Run built-in AI Triage first
         const aiResult = analyzeCivicIssue(title, description, category);
-        let finalCategory = aiResult.category;
-        let finalSeverity = aiResult.severity;
-        let aiConfidence = aiResult.confidence;
 
-        // Optional external AI microservice override if configured in cloud
-        const aiUrl = process.env.AI_SERVICE_URL;
-        if (aiUrl) {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 1500);
-
-                const [catRes, sevRes] = await Promise.all([
-                    fetch(`${aiUrl}/ai/predict-category`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text: `${title} ${description}` }),
-                        signal: controller.signal
-                    }),
-                    fetch(`${aiUrl}/ai/predict-severity`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ text: `${title} ${description}` }),
-                        signal: controller.signal
-                    })
-                ]);
-                clearTimeout(timeout);
-
-                if (catRes.ok) {
-                    const catData = await catRes.json();
-                    if (catData.category && (!category || category === "General")) {
-                        finalCategory = catData.category;
-                    }
-                    if (catData.confidence) aiConfidence = catData.confidence;
-                }
-                if (sevRes.ok) {
-                    const sevData = await sevRes.json();
-                    if (sevData.severity) finalSeverity = sevData.severity.toLowerCase();
-                }
-            } catch (aiErr) {
-                // Built-in AI Triage result is already set
-            }
-        }
-
-        // Format GeoJSON coordinates safely
         let coordinates = [88.3639, 22.5726];
         if (location) {
             if (Array.isArray(location.coordinates) && location.coordinates.length === 2) {
@@ -140,9 +77,9 @@ router.post("/", auth, async (req, res) => {
         const newIssue = new Issue({
             title,
             description,
-            category: finalCategory,
-            severity: finalSeverity,
-            aiConfidence,
+            category: aiResult.category,
+            severity: aiResult.severity,
+            aiConfidence: aiResult.confidence,
             address: address || "Pinned Location",
             municipality: municipality || "Kolkata Municipal Corporation",
             location: {
@@ -170,7 +107,6 @@ router.get("/my-reports", auth, async (req, res) => {
         const issues = await Issue.find({ user: userId }).sort({ createdAt: -1 });
         res.json(issues);
     } catch (err) {
-        console.error("Fetch My Reports Error:", err.message);
         res.status(500).json({ message: "Failed to fetch reports" });
     }
 });
@@ -180,13 +116,12 @@ router.get("/all", auth, async (req, res) => {
     try {
         const issues = await Issue.find().sort({ createdAt: -1 });
 
-        // Auto-recalculate any older issues that were stuck on the old 0.85 fallback
+        // Unconditionally synchronize severity on all reports
         const updatedIssues = await Promise.all(
             issues.map(async (doc) => {
-                if (doc.aiConfidence === 0.85 || !doc.severity) {
-                    const recheck = analyzeCivicIssue(doc.title, doc.description, doc.category);
+                const recheck = analyzeCivicIssue(doc.title, doc.description, doc.category);
+                if (doc.severity !== recheck.severity) {
                     doc.severity = recheck.severity;
-                    doc.aiConfidence = recheck.confidence;
                     await doc.save().catch(() => { });
                 }
                 return doc;
@@ -195,7 +130,6 @@ router.get("/all", auth, async (req, res) => {
 
         res.json(updatedIssues);
     } catch (err) {
-        console.error("Fetch All Issues Error:", err.message);
         res.status(500).json({ message: "Failed to fetch global issues" });
     }
 });
