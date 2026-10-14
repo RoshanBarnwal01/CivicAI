@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CitizenLogin() {
@@ -11,8 +11,12 @@ export default function CitizenLogin() {
 
   const navigate = useNavigate();
 
-  // CLOUD-READY VARIABLE: Automatically switches between local testing and live production
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
+
+  // Pre-wake Render server on page load to eliminate login delay
+  useEffect(() => {
+    fetch(`${baseUrl}/api/health`).catch(() => { });
+  }, [baseUrl]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,6 +36,7 @@ export default function CitizenLogin() {
       const data = await response.json();
 
       if (response.ok) {
+        localStorage.clear();
         localStorage.setItem('token', data.token);
         navigate('/dashboard');
       } else {

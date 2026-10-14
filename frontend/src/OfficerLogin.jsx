@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function OfficerLogin() {
@@ -6,102 +6,124 @@ export default function OfficerLogin() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const navigate = useNavigate();
 
-  // CLOUD-READY VARIABLE
   const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
-  const handleLogin = async (e) => {
+  useEffect(() => {
+    fetch(`${baseUrl}/api/health`).catch(() => { });
+  }, [baseUrl]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
+
+    if (email.trim() !== 'gov' || password !== '1122') {
+      setErrorMsg('ACCESS DENIED: Invalid Municipal Officer Credentials.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: email.trim(), password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        localStorage.clear();
         localStorage.setItem('token', data.token);
         navigate('/officer-dashboard');
       } else {
-        setErrorMsg(data.message || 'Invalid credentials.');
+        setErrorMsg(data.message || 'Unauthorized Officer credentials.');
       }
     } catch (err) {
-      console.error("Login network error:", err);
-      setErrorMsg('SYSTEM OFFLINE: COULD NOT CONNECT TO THE CENTRAL SERVER.');
+      console.error("Officer login error:", err);
+      setErrorMsg('SYSTEM OFFLINE: Unable to reach Command Server.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a101f] font-sans p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-700">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 font-sans p-4">
+      <div className="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
 
-        <div className="bg-[#0f172a] py-8 px-6 text-center border-b-4 border-blue-600">
+        {/* Header Section */}
+        <div className="bg-slate-950 py-8 px-6 text-center border-b border-slate-800">
           <div className="flex justify-center mb-3">
-            <svg className="w-10 h-10 text-slate-300" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zm-2 11h-2v6h2v-6zm6 0h-2v6h2v-6zm-10 0H4v6h2v-6zm14 0h-2v6h2v-6z" />
-            </svg>
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
+              CP
+            </div>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-widest uppercase mb-1">CivicPulse</h1>
-          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Authorized Personnel Only</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">CivicPulse</h1>
+          <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Municipal Command Portal</p>
         </div>
 
         <div className="p-8">
-          <div className="flex bg-slate-50 rounded-lg p-1 mb-8 border border-slate-200">
+          {/* Portal Toggle Switch */}
+          <div className="flex bg-slate-900 rounded-lg p-1 mb-8 border border-slate-700">
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="flex-1 py-2 text-sm font-semibold text-slate-500 rounded-md hover:bg-slate-200 transition-colors"
+              className="flex-1 py-2 text-sm font-semibold text-slate-400 rounded-md hover:text-white transition-colors"
             >
               Citizen
             </button>
             <button
               type="button"
-              className="flex-1 py-2 text-sm font-bold text-white bg-[#0f172a] rounded-md shadow-sm"
+              className="flex-1 py-2 text-sm font-bold text-white bg-blue-600 rounded-md shadow-sm"
             >
               Officer
             </button>
           </div>
 
-          <h2 className="text-xl font-bold text-center text-slate-800 mb-6">Municipal Dispatch Login</h2>
+          <h2 className="text-xl font-bold text-center text-white mb-6">
+            Administrator Dispatch Login
+          </h2>
 
           {errorMsg && (
-            <div className="mb-6 p-4 bg-rose-50 border-l-4 border-rose-600 text-rose-700 text-[11px] font-bold uppercase tracking-wide">
+            <div className="mb-6 p-4 bg-rose-950/60 border-l-4 border-rose-500 text-rose-300 text-xs font-semibold rounded-r-lg">
               {errorMsg}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Officer ID</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Officer ID</label>
               <input
-                type="text" required value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="gov"
+                type="text"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter Officer ID (e.g., gov)"
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Security Passcode</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Security Passcode</label>
               <input
-                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             <button
-              type="submit" disabled={isLoading}
-              className="w-full py-4 mt-2 bg-[#0f172a] hover:bg-slate-800 text-white font-black tracking-widest uppercase rounded-lg text-sm transition-colors shadow-lg"
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-4 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Authenticating...' : 'Access Portal'}
+              {isLoading ? 'Verifying Credentials...' : 'Access Command Center'}
             </button>
           </form>
         </div>

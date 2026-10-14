@@ -1,113 +1,138 @@
 const express = require("express");
 const router = express.Router();
 const Issue = require("../models/Issue");
-const { auth } = require("../middleware/auth");
+const auth = require("../middleware/auth");
 
-// POST: Create new report & Intercept with AI Microservice
+// 1. CREATE ISSUE (Citizen)
 router.post("/", auth, async (req, res) => {
     try {
-        const { title, category, description, address, municipality, location } = req.body;
-        let aiCategory = category;
-        let aiSeverity = "medium";
-        let aiConfidence = 0;
+        const { title, description, category, address, municipality, location } = req.body;
 
-        try {
-            const aiText = `${title}. ${description}`;
-            const catResponse = await fetch("http://localhost:8000/ai/predict-category", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: aiText })
-            });
-            const sevResponse = await fetch("http://localhost:8000/ai/predict-severity", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: aiText })
-            });
+        let finalCategory = category || "General";
+        let finalSeverity = "medium";
+        let aiConfidence = 0.85;
 
-            const catData = await catResponse.json();
-            const sevData = await sevResponse.json();
+        // Fast 1.5s timeout so cloud server never hangs when local AI server is offline
+        const aiUrl = process.env.AI_SERVICE_URL;
+        if (aiUrl) {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 1500);
 
-            if (catData.confidence >= 0.7) {
-                aiCategory = catData.predicted_category;
-                aiConfidence = catData.confidence;
+                const [catRes, sevRes] = await Promise.all([
+                    fetch(`${aiUrl}/ai/predict-category`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: `${title} ${description}` }),
+                        signal: controller.signal
+                    }),
+                    fetch(`${aiUrl}/ai/predict-severity`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ text: `${title} ${description}` }),
+                        signal: controller.signal
+                    })
+                ]);
+                clearTimeout(timeout);
+
+                if (catRes.ok) {
+                    const catData = await catRes.json();
+                    if (catData.category) finalCategory = catData.category;
+                    if (catData.confidence) aiConfidence = catData.confidence;
+                }
+                if (sevRes.ok) {
+                    const sevData = await sevRes.json();
+                    if (sevData.severity) finalSeverity = sevData.severity.toLowerCase();
+                }
+            } catch (aiErr) {
+                // Fallback silently if AI service is unreachable
             }
-            aiSeverity = sevData.predicted_severity;
-        } catch (aiError) {
-            console.error("⚠️ AI Microservice Offline. Bypassing AI sorting.");
         }
 
-        // Format location properly for GeoJSON / Schema requirements ([lng, lat])
-        const lat = location?.lat || 22.5726;
-        const lng = location?.lng || 88.3639;
+        // Format GeoJSON coordinates safely
+        let coordinates = [88.3639, 22.5726];
+        if (location) {
+            if (Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+                coordinates = [Number(location.coordinates[0]), Number(location.coordinates[1])];
+            } else if (location.lng !== undefined && location.lat !== undefined) {
+                coordinates = [Number(location.lng), Number(location.lat)];
+            }
+        }
+
+        const userId = req.user._id || req.user.id;
 
         const newIssue = new Issue({
             title,
-            category: aiCategory,
-            severity: aiSeverity,
-            ai_confidence: aiConfidence,
             description,
-            address: address || "Kolkata, West Bengal",
+            category: finalCategory,
+            severity: finalSeverity,
+            aiConfidence,
+            address: address || "Pinned Location",
             municipality: municipality || "Kolkata Municipal Corporation",
             location: {
                 type: "Point",
-                coordinates: [lng, lat],
-                lat: lat,
-                lng: lng
+                coordinates
             },
-            user: req.user._id,
-            status: "open"
+            ...(userId && userId !== "admin_999" ? { user: userId } : {})
         });
 
-        await newIssue.save();
-        console.log(`✅ Saved new issue to Database: ${title}`);
-        res.status(201).json(newIssue);
+        const savedIssue = await newIssue.save();
+        res.status(201).json(savedIssue);
     } catch (err) {
-        console.error("🔴 ISSUE SUBMIT DATABASE ERROR:", err.message);
-        res.status(500).json({ message: "Server error", error: err.message });
+        console.error("Create Issue Error:", err.message);
+        res.status(500).json({ message: "Failed to register complaint", error: err.message });
     }
 });
 
-// GET: Citizen fetches their own reports
+// 2. GET LOGGED-IN CITIZEN'S REPORTS
 router.get("/my-reports", auth, async (req, res) => {
     try {
-        const issues = await Issue.find({ user: req.user._id }).sort({ createdAt: -1 });
+        const userId = req.user._id || req.user.id;
+        if (userId === "admin_999") {
+            return res.json([]);
+        }
+        const issues = await Issue.find({ user: userId }).sort({ createdAt: -1 });
         res.json(issues);
     } catch (err) {
-        res.status(500).json({ message: "Server error" });
+        console.error("Fetch My Reports Error:", err.message);
+        res.status(500).json({ message: "Failed to fetch reports" });
     }
 });
 
-// GET: Officer fetches ALL global reports
+// 3. GET ALL GLOBAL REPORTS (Officer Command Center)
 router.get("/all", auth, async (req, res) => {
     try {
-        if (req.user.role !== 'officer') {
-            return res.status(403).json({ message: "Access denied." });
-        }
-        const issues = await Issue.find().sort({ ai_confidence: -1, createdAt: -1 });
+        const issues = await Issue.find().sort({ createdAt: -1 });
         res.json(issues);
     } catch (err) {
-        res.status(500).json({ message: "Server error fetching all issues" });
+        console.error("Fetch All Issues Error:", err.message);
+        res.status(500).json({ message: "Failed to fetch global issues" });
     }
 });
 
-// PUT: Officer updates an issue's status
+// 4. UPDATE ISSUE STATUS (Officer)
 router.put("/:id/status", auth, async (req, res) => {
     try {
-        if (req.user.role !== 'officer') return res.status(403).json({ message: "Access denied." });
         const { status } = req.body;
-        const updatedIssue = await Issue.findByIdAndUpdate(req.params.id, { status }, { new: true });
-        res.json(updatedIssue);
+        const updated = await Issue.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ message: "Issue not found" });
+        res.json(updated);
     } catch (err) {
-        res.status(500).json({ message: "Server error updating status" });
+        res.status(500).json({ message: "Failed to update status" });
     }
 });
 
-// DELETE: Officer removes/deletes an issue report
+// 5. DELETE ISSUE (Officer)
 router.delete("/:id", auth, async (req, res) => {
     try {
-        if (req.user.role !== 'officer') {
-            return res.status(403).json({ message: "Access denied." });
-        }
         await Issue.findByIdAndDelete(req.params.id);
         res.json({ message: "Issue deleted successfully" });
     } catch (err) {
-        res.status(500).json({ message: "Server error deleting issue" });
+        res.status(500).json({ message: "Failed to delete issue" });
     }
 });
 

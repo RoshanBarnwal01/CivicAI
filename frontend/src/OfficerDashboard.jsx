@@ -1,123 +1,127 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 export default function OfficerDashboard() {
   const [user, setUser] = useState(null);
   const [issues, setIssues] = useState([]);
-  const [activeTab, setActiveTab] = useState('command-center');
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('command-center');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('officerTheme');
+    return saved ? saved === 'dark' : true;
+  });
 
   const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markersRef = useRef([]);
-
   const navigate = useNavigate();
 
-  // STRICT IPv4 PORT TO BYPASS LOCALHOST BLOCKS
-  const baseUrl = 'http://127.0.0.1:5005';
+  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:5005';
 
-  useEffect(() => {
-    fetchUserData();
-    fetchAllReports();
-  }, []);
-
-  // Initialize and populate Leaflet Map for Officers
-  useEffect(() => {
-    if (activeTab === 'map' && mapRef.current) {
-      if (!mapInstanceRef.current) {
-        // Center map on Kolkata/West Bengal area
-        const map = L.map(mapRef.current).setView([22.5726, 88.3639], 11);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        mapInstanceRef.current = map;
-      }
-
-      // Clear existing markers
-      markersRef.current.forEach(marker => marker.remove());
-      markersRef.current = [];
-
-      // Add markers for all active issues
-      issues.forEach(issue => {
-        if (issue.location && issue.location.lat && issue.location.lng) {
-          const markerColor = issue.status === 'resolved' ? 'green' : issue.status === 'in_progress' ? 'orange' : 'red';
-
-          // Simple custom icon styling using Leaflet DivIcon
-          const customIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style="background-color:${markerColor}; width:16px; height:16px; border-radius:50%; border:2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-          });
-
-          const marker = L.marker([issue.location.lat, issue.location.lng], { icon: customIcon })
-            .addTo(mapInstanceRef.current)
-            .bindPopup(`
-              <div style="font-family:sans-serif; min-width:200px;">
-                <strong style="display:block; margin-bottom:4px;">${issue.title}</strong>
-                <div style="font-size:12px; color:#666;">${issue.category}</div>
-                <div style="font-size:12px; font-weight:bold; margin-top:4px; text-transform:uppercase;">
-                  Status: ${issue.status.replace('_', ' ')}
-                </div>
-              </div>
-            `);
-          markersRef.current.push(marker);
-        }
-      });
-    }
-  }, [activeTab, issues]);
-
-  const fetchUserData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return navigate('/');
-
-      const response = await fetch(`${baseUrl}/api/users/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Kick out non-officers
-        if (data.role !== 'officer') {
-          handleLogout();
-        } else {
-          setUser(data);
-        }
-      } else {
-        handleLogout();
-      }
-    } catch (error) {
-      console.error("Failed to fetch officer profile:", error);
-    }
+  const toggleTheme = () => {
+    const nextMode = !isDarkMode;
+    setIsDarkMode(nextMode);
+    localStorage.setItem('officerTheme', nextMode ? 'dark' : 'light');
   };
 
-  const fetchAllReports = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${baseUrl}/api/issues/all`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+  const fetchGlobalIssues = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/officer');
+      return;
+    }
 
-      if (response.ok) {
-        const data = await response.json();
-        setIssues(data);
+    try {
+      const [userRes, issuesRes] = await Promise.all([
+        fetch(`${baseUrl}/api/users/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${baseUrl}/api/issues/all`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      if (userRes.status === 401 || userRes.status === 403 || issuesRes.status === 401 || issuesRes.status === 403) {
+        localStorage.removeItem('token');
+        navigate('/officer');
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch reports:", error);
+
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        setUser(userData);
+      }
+
+      if (issuesRes.ok) {
+        const issuesData = await issuesRes.json();
+        setIssues(Array.isArray(issuesData) ? issuesData : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch global issues:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUpdateStatus = async (issueId, newStatus) => {
+  useEffect(() => {
+    fetchGlobalIssues();
+  }, []);
+
+  // Initialize Tactical Map when 'map-view' tab is selected
+  useEffect(() => {
+    if (activeTab !== 'map-view') {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const container = document.getElementById('tactical-map');
+      if (!container || mapRef.current) return;
+
+      const map = L.map('tactical-map').setView([22.5726, 88.3639], 12);
+      mapRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      issues.forEach((issue) => {
+        const coords = issue.location?.coordinates;
+        if (Array.isArray(coords) && coords.length === 2) {
+          const [lng, lat] = coords;
+          const color =
+            issue.status === 'resolved'
+              ? '#10b981'
+              : issue.severity === 'high' || issue.severity === 'critical'
+                ? '#ef4444'
+                : '#f59e0b';
+
+          const markerIcon = L.divIcon({
+            className: 'tactical-marker',
+            html: `<div style="background:${color};width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px ${color};"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+
+          L.marker([lat, lng], { icon: markerIcon })
+            .addTo(map)
+            .bindPopup(
+              `<strong>${issue.title}</strong><br/>Category: ${issue.category || 'N/A'}<br/>Status: ${issue.status}`
+            );
+        }
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [activeTab, issues]);
+
+  const updateStatus = async (id, newStatus) => {
+    const token = localStorage.getItem('token');
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${baseUrl}/api/issues/${issueId}/status`, {
+      const res = await fetch(`${baseUrl}/api/issues/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -126,230 +130,223 @@ export default function OfficerDashboard() {
         body: JSON.stringify({ status: newStatus })
       });
 
-      if (response.ok) {
-        fetchAllReports(); // Refresh the list
+      if (res.ok) {
+        setIssues((prev) =>
+          prev.map((item) => (item._id === id ? { ...item, status: newStatus } : item))
+        );
       }
-    } catch (error) {
-      console.error("Failed to update status:", error);
-      alert("Network error while updating status.");
+    } catch (err) {
+      console.error("Failed to update status:", err);
     }
   };
 
-  const handleDeleteIssue = async (issueId) => {
-    if (!window.confirm("Are you sure you want to permanently delete this report?")) return;
-
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem('token');
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${baseUrl}/api/issues/${issueId}`, {
+      const res = await fetch(`${baseUrl}/api/issues/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      if (response.ok) {
-        fetchAllReports(); // Refresh the list
+      if (res.ok) {
+        setIssues((prev) => prev.filter((item) => item._id !== id));
       }
-    } catch (error) {
-      console.error("Failed to delete issue:", error);
+    } catch (err) {
+      console.error("Failed to delete issue:", err);
     }
   };
 
   const handleLogout = () => {
     localStorage.clear();
-    navigate('/');
+    navigate('/officer');
   };
 
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans flex">
+  const totalCount = issues.length;
+  const openCount = issues.filter((i) => i.status === 'open').length;
+  const inProgressCount = issues.filter((i) => i.status === 'in_progress').length;
+  const resolvedCount = issues.filter((i) => i.status === 'resolved').length;
 
-      {/* Dark Sidebar Navigation for Officers */}
-      <aside className="w-64 bg-[#0f172a] text-slate-300 p-6 flex flex-col justify-between shrink-0 shadow-xl z-20">
+  return (
+    <div className={`min-h-screen flex font-sans transition-colors ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+      {/* Sidebar */}
+      <aside className={`w-64 border-r flex flex-col justify-between shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div>
-          <div className="flex items-center gap-3 mb-10 pb-6 border-b border-slate-700">
-            <div className="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center text-white font-bold border border-slate-600">
-              <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zm-2 11h-2v6h2v-6zm6 0h-2v6h2v-6zm-10 0H4v6h2v-6zm14 0h-2v6h2v-6z" />
-              </svg>
+          <div className={`p-6 border-b flex items-center space-x-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
+              CP
             </div>
             <div>
-              <div className="font-black text-white tracking-widest uppercase text-sm">CivicPulse</div>
-              <div className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Command Center</div>
+              <h1 className="text-lg font-bold tracking-tight">CivicPulse</h1>
+              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Command Center</p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-3">Central Dispatch</div>
-
+          <nav className="p-4 space-y-1">
             <button
               onClick={() => setActiveTab('command-center')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'command-center' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400'}`}
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'command-center'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : isDarkMode
+                    ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
             >
-              📊 Operations Board
+              Operations Board
             </button>
-
             <button
-              onClick={() => setActiveTab('map')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${activeTab === 'map' ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800 text-slate-400'}`}
+              onClick={() => setActiveTab('map-view')}
+              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'map-view'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : isDarkMode
+                    ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
             >
-              🗺️ Tactical Map
+              Tactical Map
             </button>
-          </div>
+          </nav>
         </div>
 
-        <div>
-          <div className="mb-4 px-4 py-3 bg-slate-800/50 rounded-lg border border-slate-700">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Active Officer</div>
-            <div className="text-sm font-bold text-white truncate">{user?.name || 'Loading...'}</div>
-            <div className="text-xs text-slate-400 truncate">{user?.email || ''}</div>
+        <div className={`p-4 border-t space-y-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <button
+            onClick={toggleTheme}
+            className={`w-full py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${isDarkMode
+                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              }`}
+          >
+            {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          </button>
+
+          <div className="px-2">
+            <p className="text-xs font-bold text-slate-500 uppercase">Active Officer</p>
+            <p className="text-sm font-bold truncate">{user?.name || 'Chief Municipal Officer'}</p>
           </div>
+
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-rose-500 hover:bg-rose-500 hover:text-white transition-colors border border-rose-500/30 hover:border-rose-500"
+            className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-colors"
           >
-            LOCK TERMINAL
+            End Shift / Logout
           </button>
         </div>
       </aside>
 
-      {/* Right Content Area */}
-      <main className="flex-1 p-10 overflow-y-auto">
+      {/* Main Content */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-2xl font-bold">Municipal Dispatch & Triage</h2>
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Live feed of citizen-submitted civic reports across all municipal zones.
+            </p>
+          </div>
+          <button
+            onClick={fetchGlobalIssues}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-colors"
+          >
+            ↻ Sync Live Queue
+          </button>
+        </div>
 
-        <header className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
-            {activeTab === 'command-center' && 'Global Operations Board'}
-            {activeTab === 'map' && 'Tactical Dispatch Map'}
-          </h1>
-          <p className="text-sm text-slate-500 font-semibold mt-1">Authorized access level: Municipal Administrator</p>
-        </header>
+        {/* Metrics Row */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+          <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <p className="text-xs font-bold text-slate-400 uppercase">Total Incidents</p>
+            <p className="text-3xl font-extrabold mt-1">{totalCount}</p>
+          </div>
+          <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <p className="text-xs font-bold text-rose-400 uppercase">Open / Unassigned</p>
+            <p className="text-3xl font-extrabold text-rose-500 mt-1">{openCount}</p>
+          </div>
+          <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <p className="text-xs font-bold text-amber-400 uppercase">In Progress</p>
+            <p className="text-3xl font-extrabold text-amber-500 mt-1">{inProgressCount}</p>
+          </div>
+          <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <p className="text-xs font-bold text-emerald-400 uppercase">Resolved</p>
+            <p className="text-3xl font-extrabold text-emerald-500 mt-1">{resolvedCount}</p>
+          </div>
+        </div>
 
-        {/* TAB 1: COMMAND CENTER (TABLE VIEW) */}
-        {activeTab === 'command-center' && (
-          <div className="space-y-6">
-
-            {/* KPI Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-blue-600">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Reports</div>
-                <div className="text-3xl font-black text-slate-900">{issues.length}</div>
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-rose-500">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Open / Unassigned</div>
-                <div className="text-3xl font-black text-rose-600">{issues.filter(i => i.status === 'open').length}</div>
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">In Progress</div>
-                <div className="text-3xl font-black text-amber-600">{issues.filter(i => i.status === 'in_progress').length}</div>
-              </div>
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Resolved</div>
-                <div className="text-3xl font-black text-emerald-600">{issues.filter(i => i.status === 'resolved').length}</div>
-              </div>
-            </div>
-
-            {/* Global Issues Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-                <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">Incoming Dispatch Queue</h2>
-                <button onClick={fetchAllReports} className="text-xs font-bold text-blue-600 hover:text-blue-800">↻ REFRESH DATA</button>
-              </div>
-
+        {activeTab === 'command-center' ? (
+          <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            {isLoading ? (
+              <div className="p-12 text-center text-sm text-slate-400">Synchronizing live incident queue...</div>
+            ) : issues.length === 0 ? (
+              <div className="p-12 text-center text-sm text-slate-400">No active citizen complaints in the database.</div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
-                    <tr>
-                      <th className="px-6 py-4">AI Triage</th>
-                      <th className="px-6 py-4">Report Details</th>
-                      <th className="px-6 py-4">Location & Zone</th>
-                      <th className="px-6 py-4">Status Control</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className={`border-b text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                      <th className="py-4 px-6">AI Triage</th>
+                      <th className="py-4 px-6">Report Details</th>
+                      <th className="py-4 px-6">Location & Zone</th>
+                      <th className="py-4 px-6">Status Control</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {isLoading ? (
-                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-500">Loading central database...</td></tr>
-                    ) : issues.length === 0 ? (
-                      <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-500 font-semibold">No civic issues reported.</td></tr>
-                    ) : (
-                      issues.map((issue) => (
-                        <tr key={issue._id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className={`inline-flex items-center justify-center px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded ${issue.severity === 'high' ? 'bg-rose-100 text-rose-700' :
-                                issue.severity === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-sky-100 text-sky-700'
-                              }`}>
-                              {issue.severity || 'Normal'}
-                            </div>
-                            {issue.ai_confidence > 0 && (
-                              <div className="text-[10px] font-bold text-slate-400 mt-1">
-                                CF: {(issue.ai_confidence * 100).toFixed(0)}%
-                              </div>
-                            )}
-                          </td>
+                  <tbody className={`divide-y text-sm ${isDarkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
+                    {issues.map((issue) => (
+                      <tr key={issue._id} className={isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'}>
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${issue.severity === 'high' || issue.severity === 'critical'
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                              : issue.severity === 'medium'
+                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                            }`}>
+                            {issue.severity || 'medium'}
+                          </span>
+                          <div className="text-xs text-slate-400 mt-1 font-medium">{issue.category || 'General'}</div>
+                        </td>
 
-                          <td className="px-6 py-4 max-w-xs">
-                            <div className="font-bold text-slate-900 truncate">{issue.title}</div>
-                            <div className="text-xs text-slate-500 truncate mt-0.5">{issue.category}</div>
-                            <div className="text-[11px] text-slate-400 line-clamp-1 mt-1">{issue.description}</div>
-                          </td>
+                        <td className="py-4 px-6">
+                          <div className="font-bold">{issue.title}</div>
+                          <div className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{issue.description}</div>
+                        </td>
 
-                          <td className="px-6 py-4">
-                            <div className="font-semibold text-slate-700 text-xs">{issue.municipality}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 truncate max-w-[200px]" title={issue.address}>
-                              📍 {issue.address}
-                            </div>
-                          </td>
+                        <td className="py-4 px-6">
+                          <div className="text-xs font-bold text-blue-400">{issue.municipality || 'Kolkata Municipal Corporation'}</div>
+                          <div className="text-xs text-slate-400 mt-0.5 max-w-xs truncate">{issue.address || 'Pinned Coordinates'}</div>
+                        </td>
 
-                          <td className="px-6 py-4">
-                            <select
-                              value={issue.status}
-                              onChange={(e) => handleUpdateStatus(issue._id, e.target.value)}
-                              className={`text-xs font-bold uppercase tracking-wider rounded-lg px-3 py-1.5 border outline-none cursor-pointer transition-colors ${issue.status === 'open' ? 'bg-rose-50 border-rose-200 text-rose-700 focus:ring-rose-500' :
-                                  issue.status === 'in_progress' ? 'bg-amber-50 border-amber-200 text-amber-700 focus:ring-amber-500' :
-                                    'bg-emerald-50 border-emerald-200 text-emerald-700 focus:ring-emerald-500'
-                                }`}
-                            >
-                              <option value="open">OPEN</option>
-                              <option value="in_progress">IN PROGRESS</option>
-                              <option value="resolved">RESOLVED</option>
-                            </select>
-                          </td>
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <select
+                            value={issue.status || 'open'}
+                            onChange={(e) => updateStatus(issue._id, e.target.value)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase border focus:outline-none ${isDarkMode
+                                ? 'bg-slate-800 border-slate-700 text-white'
+                                : 'bg-slate-100 border-slate-300 text-slate-900'
+                              }`}
+                          >
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        </td>
 
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => handleDeleteIssue(issue._id)}
-                              className="text-slate-400 hover:text-rose-600 transition-colors p-2"
-                              title="Delete Report"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                        <td className="py-4 px-6 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => handleDelete(issue._id)}
+                            className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg text-xs font-bold transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
+          </div>
+        ) : (
+          <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <div id="tactical-map" className="w-full h-[540px] rounded-xl z-0"></div>
           </div>
         )}
-
-        {/* TAB 2: TACTICAL MAP */}
-        {activeTab === 'map' && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col h-[750px]">
-            <div className="flex justify-between items-center mb-4 px-2">
-              <div className="text-xs font-black text-slate-500 uppercase tracking-widest">Global Asset & Incident Tracking</div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase"><div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm"></div> Open</div>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase"><div className="w-3 h-3 rounded-full bg-orange-500 border-2 border-white shadow-sm"></div> In Progress</div>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase"><div className="w-3 h-3 rounded-full bg-green-500 border-2 border-white shadow-sm"></div> Resolved</div>
-              </div>
-            </div>
-
-            <div ref={mapRef} className="w-full flex-1 rounded-xl border border-slate-200 z-10" />
-          </div>
-        )}
-
       </main>
     </div>
   );

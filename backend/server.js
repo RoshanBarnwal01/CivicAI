@@ -5,8 +5,8 @@ require("dotenv").config();
 
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
-const userRoutes = require("./routes/userRoutes"); // Matches exactly with your renamed file
-const issueRoutes = require("./routes/issue.routes"); // Fixed the extra "s" to match your file explorer
+const userRoutes = require("./routes/userRoutes");
+const issueRoutes = require("./routes/issue.routes");
 
 const app = express();
 
@@ -14,19 +14,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Fast Health Check to Wake Up Render Instance
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/issues", issueRoutes);
 
-// CLOUD-READY CONFIGURATION: Fallback to local if env variables are not present
 const PORT = process.env.PORT || 5005;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/civicpulse";
 
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB successfully");
-    // Removed '127.0.0.1' so Render can expose the server to the internet
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
