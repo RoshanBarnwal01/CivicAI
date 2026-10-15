@@ -64,11 +64,13 @@ export default function CitizenLogin() {
         {/* Header Section */}
         <div className="bg-blue-600 py-8 px-6 text-center">
           <div className="flex justify-center mb-3">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold text-xl shadow-sm">
-              CP
-            </div>
+            <img
+              src="/logo.png"
+              alt="Civic AI"
+              className="w-12 h-12 rounded-xl object-cover shadow-sm bg-white"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">CivicPulse</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Civic AI</h1>
           <p className="text-xs font-medium text-blue-100 uppercase tracking-wider">Citizen Portal</p>
         </div>
 

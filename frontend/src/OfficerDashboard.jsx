@@ -208,11 +208,13 @@ export default function OfficerDashboard() {
       <aside className={`w-full md:w-64 border-b md:border-b-0 md:border-r flex flex-col justify-between shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div>
           <div className={`p-4 md:p-6 border-b flex items-center space-x-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
-              CP
-            </div>
+            <img
+              src="/logo.png"
+              alt="Civic AI"
+              className="w-10 h-10 rounded-xl object-cover shadow-md shrink-0"
+            />
             <div>
-              <h1 className="text-lg font-bold tracking-tight">CivicPulse</h1>
+              <h1 className="text-lg font-bold tracking-tight">Civic AI</h1>
               <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Command Center</p>
             </div>
           </div>

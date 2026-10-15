@@ -182,7 +182,7 @@ export default function CitizenDashboard() {
           title,
           category,
           description,
-          address: address || `Lat: ${coords.lat.toFixed(4)}, Lng:${coords.lng.toFixed(4)}`,
+          address: address || `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
           municipality,
           location: {
             lat: coords.lat,
@@ -229,11 +229,13 @@ export default function CitizenDashboard() {
         <div>
           <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between md:justify-start md:space-x-3">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                CP
-              </div>
+              <img
+                src="/logo.png"
+                alt="Civic AI"
+                className="w-10 h-10 rounded-xl object-cover shadow-sm shrink-0"
+              />
               <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">CivicPulse</h1>
+                <h1 className="text-lg font-bold text-slate-900 leading-tight">Civic AI</h1>
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Citizen Portal</p>
               </div>
             </div>

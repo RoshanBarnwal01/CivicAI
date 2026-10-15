@@ -57,11 +57,13 @@ export default function OfficerLogin() {
         {/* Header Section */}
         <div className="bg-slate-950 py-8 px-6 text-center border-b border-slate-800">
           <div className="flex justify-center mb-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
-              CP
-            </div>
+            <img
+              src="/logo.png"
+              alt="Civic AI"
+              className="w-12 h-12 rounded-xl object-cover shadow-md"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">CivicPulse</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Civic AI</h1>
           <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Municipal Command Portal</p>
         </div>
 
