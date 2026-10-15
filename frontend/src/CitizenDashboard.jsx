@@ -56,7 +56,6 @@ export default function CitizenDashboard() {
 
       if (userRes.ok) {
         const userData = await userRes.json();
-        // Never redirect Citizen Dashboard to Officer Dashboard; only update if valid citizen data
         if (userData && userData.email !== 'gov' && userData.role !== 'officer') {
           setUser(userData);
           localStorage.setItem('citizenUser', JSON.stringify(userData));
@@ -183,7 +182,7 @@ export default function CitizenDashboard() {
           title,
           category,
           description,
-          address: address || `Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}`,
+          address: address || `Lat: ${coords.lat.toFixed(4)}, Lng:${coords.lng.toFixed(4)}`,
           municipality,
           location: {
             lat: coords.lat,
@@ -224,38 +223,40 @@ export default function CitizenDashboard() {
   const pendingReports = reports.filter(r => r.status !== 'resolved').length;
 
   return (
-    <div className="min-h-screen flex bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans text-slate-900">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col justify-between shrink-0">
         <div>
-          <div className="p-6 border-b border-slate-100 flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              CP
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">CivicPulse</h1>
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Citizen Portal</p>
+          <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between md:justify-start md:space-x-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                CP
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 leading-tight">CivicPulse</h1>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Citizen Portal</p>
+              </div>
             </div>
           </div>
 
-          <nav className="p-4 space-y-1">
+          <nav className="p-3 md:p-4 flex md:flex-col gap-2 md:gap-0 md:space-y-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
+              className={`flex-1 md:w-full text-center md:text-left px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'overview' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
                 }`}
             >
               Dashboard Overview
             </button>
             <button
               onClick={() => setActiveTab('report')}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'report' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
+              className={`flex-1 md:w-full text-center md:text-left px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'report' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
                 }`}
             >
               Map & Report Issue
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
+              className={`flex-1 md:w-full text-center md:text-left px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'settings' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
                 }`}
             >
               Profile Settings
@@ -263,15 +264,15 @@ export default function CitizenDashboard() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-200">
-          <div className="mb-3 px-2">
+        <div className="p-3 md:p-4 border-t border-slate-200 flex md:block items-center justify-between gap-3">
+          <div className="md:mb-3 px-2 min-w-0">
             <p className="text-xs font-bold text-slate-400 uppercase">Signed in as</p>
             <p className="text-sm font-bold text-slate-800 truncate">{user?.name || 'Citizen'}</p>
             <p className="text-xs text-slate-500 truncate">{user?.email || ''}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors"
+            className="w-auto md:w-full shrink-0 py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors"
           >
             Sign Out
           </button>
@@ -279,17 +280,17 @@ export default function CitizenDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         {activeTab === 'overview' && (
           <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.name || 'Citizen'}</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Welcome back, {user?.name || 'Citizen'}</h2>
                 <p className="text-sm text-slate-500">Track your submitted municipal complaints and real-time resolution progress.</p>
               </div>
               <button
                 onClick={() => setActiveTab('report')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-5 py-3 rounded-xl shadow-sm transition-colors"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-5 py-3 rounded-xl shadow-sm transition-colors"
               >
                 + Report New Issue
               </button>

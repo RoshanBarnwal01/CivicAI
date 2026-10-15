@@ -40,7 +40,6 @@ function evaluateIssueSeverity(issue) {
   if (lowKeywords.some((kw) => text.includes(kw))) return 'low';
   if (mediumKeywords.some((kw) => text.includes(kw))) return 'medium';
 
-  // Short test inputs without hazard keywords (e.g., "eeee", "www") triage as low
   if (text.length < 12) return 'low';
 
   return issue?.severity && issue.severity !== 'medium' ? issue.severity : 'medium';
@@ -204,11 +203,11 @@ export default function OfficerDashboard() {
   const resolvedCount = issues.filter((i) => i.status === 'resolved').length;
 
   return (
-    <div className={`min-h-screen flex font-sans transition-colors ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       {/* Sidebar */}
-      <aside className={`w-64 border-r flex flex-col justify-between shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+      <aside className={`w-full md:w-64 border-b md:border-b-0 md:border-r flex flex-col justify-between shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div>
-          <div className={`p-6 border-b flex items-center space-x-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+          <div className={`p-4 md:p-6 border-b flex items-center space-x-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
               CP
             </div>
@@ -218,10 +217,10 @@ export default function OfficerDashboard() {
             </div>
           </div>
 
-          <nav className="p-4 space-y-1">
+          <nav className="p-3 md:p-4 flex md:flex-col gap-2 md:gap-0 md:space-y-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab('command-center')}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'command-center'
+              className={`flex-1 md:w-full text-center md:text-left px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'command-center'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : isDarkMode
                     ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -232,7 +231,7 @@ export default function OfficerDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('map-view')}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'map-view'
+              className={`flex-1 md:w-full text-center md:text-left px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeTab === 'map-view'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : isDarkMode
                     ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -244,20 +243,22 @@ export default function OfficerDashboard() {
           </nav>
         </div>
 
-        <div className={`p-4 border-t space-y-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-          <button
-            onClick={toggleTheme}
-            className={`w-full py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${isDarkMode
-                ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
-                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-              }`}
-          >
-            {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
+        <div className={`p-3 md:p-4 border-t space-y-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+          <div className="flex md:block items-center justify-between gap-2">
+            <div className="px-2 md:mb-3 min-w-0">
+              <p className="text-xs font-bold text-slate-500 uppercase">Active Officer</p>
+              <p className="text-sm font-bold truncate">{user?.name || 'Chief Municipal Officer'}</p>
+            </div>
 
-          <div className="px-2">
-            <p className="text-xs font-bold text-slate-500 uppercase">Active Officer</p>
-            <p className="text-sm font-bold truncate">{user?.name || 'Chief Municipal Officer'}</p>
+            <button
+              onClick={toggleTheme}
+              className={`shrink-0 md:w-full py-2 px-3 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${isDarkMode
+                  ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
+            >
+              {isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            </button>
           </div>
 
           <button
@@ -270,17 +271,17 @@ export default function OfficerDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-8">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <div>
-            <h2 className="text-2xl font-bold">Municipal Dispatch & Triage</h2>
+            <h2 className="text-xl md:text-2xl font-bold">Municipal Dispatch & Triage</h2>
             <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Live feed of citizen-submitted civic reports across all municipal zones.
             </p>
           </div>
           <button
             onClick={fetchGlobalIssues}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-colors"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-sm transition-colors"
           >
             ↻ Sync Live Queue
           </button>
